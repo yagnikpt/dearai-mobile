@@ -1,2 +1,20 @@
 @import "tailwindcss";
 @import "uniwind";
+@import 'heroui-native/styles';
+@source '../node_modules/heroui-native/lib';
+
+@theme {
+  --font-sans-light: "Rubik-Light";
+  --font-sans: "Rubik-Regular";
+  --font-sans-medium: "Rubik-Medium";
+  --font-sans-semibold: "Rubik-SemiBold";
+  --font-sans-bold: "Rubik-Bold";
+  --font-sans-black: "Rubik-Black";
+  --font-serif: "DMSerifDisplay";
+}
+
+@layer theme {
+    @variant light {
+        --accent: oklch(0.5905 0.0674 142.65);
+    }
+}

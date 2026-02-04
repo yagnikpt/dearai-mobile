@@ -1,45 +1,32 @@
 {
-  "expo": {
-    "name": "dearai-mobile",
-    "slug": "dearai-mobile",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "dearaimobile",
-    "userInterfaceStyle": "automatic",
-    "ios": {
-      "icon": "./assets/expo.icon"
-    },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
-      },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
-    },
-    "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
-    },
-    "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#208AEF",
-          "android": {
-            "image": "./assets/images/splash-icon.png",
-            "imageWidth": 76
-          }
-        }
-      ]
-    ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
-    }
-  }
+	"expo": {
+		"name": "dearai-mobile",
+		"slug": "dearai-mobile",
+		"version": "1.0.0",
+		"orientation": "portrait",
+		"scheme": "dearaimobile",
+		"userInterfaceStyle": "automatic",
+		"android": {
+			"edgeToEdgeEnabled": true,
+			"predictiveBackGestureEnabled": false,
+			"usesCleartextTraffic": true
+		},
+		"plugins": [
+			"expo-router",
+			"expo-secure-store",
+			[
+				"expo-font",
+				{
+					"fonts": [
+						"./src/assets/fonts/Rubik.ttf",
+						"./src/assets/fonts/DMSerifDisplay.ttf"
+					]
+				}
+			]
+		],
+		"experiments": {
+			"typedRoutes": true,
+			"reactCompiler": true
+		}
+	}
 }
