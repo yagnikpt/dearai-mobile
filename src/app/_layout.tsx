@@ -22,6 +22,7 @@ function RootLayoutNav() {
 		"Rubik-SemiBold": require("../assets/fonts/Rubik-SemiBold.ttf"),
 		"Rubik-Bold": require("../assets/fonts/Rubik-Bold.ttf"),
 		"Rubik-Black": require("../assets/fonts/Rubik-Black.ttf"),
+		"Rubik-Italic-Regular": require("../assets/fonts/Rubik-Italic.ttf"),
 		DMSerifDisplay: require("../assets/fonts/DMSerifDisplay.ttf"),
 	});
 
@@ -61,7 +62,9 @@ export default function RootLayout() {
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
 			<KeyboardProvider>
-				<HeroUINativeProvider>
+				<HeroUINativeProvider
+					config={{ devInfo: { stylingPrinciples: false } }}
+				>
 					<AuthProvider>
 						<RootLayoutNav />
 					</AuthProvider>

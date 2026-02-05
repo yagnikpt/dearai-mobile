@@ -4,33 +4,30 @@ import {
 	useCallback,
 	useContext,
 	useEffect,
+	useMemo,
 	useRef,
+	useState,
 } from "react";
-import {
-	authApi,
-	type RegisterRequest,
-	setAuthFailureCallback,
-} from "@/lib/api";
+
+import { api, authApi, setAuthFailureCallback } from "@/lib/api";
 import {
 	clearAuthStorage,
 	getStorageItemAsync,
-	getTokenExpirationTime,
-	isTokenExpired,
+	getUserData,
 	STORAGE_KEYS,
+	setUserData,
 	useStorageState,
 } from "@/lib/auth";
-
-interface AuthContextType {
-	// Auth state
-	session: string | null;
-	userEmail: string | null;
-	isLoading: boolean;
-
-	// Auth actions
-	signIn: (email: string, password: string) => Promise<void>;
-	signUp: (data: RegisterRequest) => Promise<void>;
-	signOut: () => Promise<void>;
-}
+import {
+	MIN_REFRESH_DELAY_MS,
+	TOKEN_REFRESH_BUFFER_SECONDS,
+} from "@/lib/constants";
+import { getTokenExpirationTime, isTokenExpired } from "@/lib/jwt";
+import type {
+	AuthContextType,
+	RegisterRequest,
+	StoredUser,
+} from "@/lib/types/auth";
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -42,7 +39,6 @@ export function useAuth() {
 	return context;
 }
 
-// Hook to check if user is authenticated
 export function useSession() {
 	const { session, isLoading } = useAuth();
 	return {
@@ -53,38 +49,45 @@ export function useSession() {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-	// Storage-backed state for tokens and email
 	const [[isLoadingAccessToken, accessToken], setAccessToken] = useStorageState(
 		STORAGE_KEYS.ACCESS_TOKEN,
 	);
 	const [[isLoadingRefreshToken], setRefreshToken] = useStorageState(
 		STORAGE_KEYS.REFRESH_TOKEN,
 	);
-	const [[isLoadingEmail, userEmail], setUserEmail] = useStorageState(
-		STORAGE_KEYS.USER_EMAIL,
-	);
 
-	// Ref to store the proactive refresh timer
+	// User data state
+	const [user, setUser] = useState<StoredUser | null>(null);
+	const [isLoadingUser, setIsLoadingUser] = useState(true);
+
 	const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-	// Combined loading state
 	const isLoading =
-		isLoadingAccessToken || isLoadingRefreshToken || isLoadingEmail;
+		isLoadingAccessToken || isLoadingRefreshToken || isLoadingUser;
 
-	/**
-	 * Schedule a proactive token refresh before expiration
-	 */
+	// Load user data on mount
+	useEffect(() => {
+		getUserData()
+			.then(setUser)
+			.finally(() => setIsLoadingUser(false));
+	}, []);
+
+	const clearRefreshTimer = useCallback(() => {
+		if (refreshTimerRef.current) {
+			clearTimeout(refreshTimerRef.current);
+			refreshTimerRef.current = null;
+		}
+	}, []);
+
 	const scheduleTokenRefresh = useCallback(
 		(token: string) => {
-			// Clear any existing timer
-			if (refreshTimerRef.current) {
-				clearTimeout(refreshTimerRef.current);
-				refreshTimerRef.current = null;
-			}
+			clearRefreshTimer();
 
 			const timeUntilExpiry = getTokenExpirationTime(token);
-			// Refresh 60 seconds before expiry, but at least 10 seconds from now
-			const refreshIn = Math.max(timeUntilExpiry - 60000, 10000);
+			const refreshIn = Math.max(
+				timeUntilExpiry - TOKEN_REFRESH_BUFFER_SECONDS * 1000,
+				MIN_REFRESH_DELAY_MS,
+			);
 
 			console.log(
 				`Scheduling token refresh in ${Math.round(refreshIn / 1000)} seconds`,
@@ -101,8 +104,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 						return;
 					}
 
-					// Import api here to avoid circular dependency at module level
-					const { api } = await import("@/lib/api");
 					const response = await api.post("/auth/refresh", {
 						refresh_token: currentRefreshToken,
 					});
@@ -110,73 +111,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 					const { access_token, refresh_token: newRefreshToken } =
 						response.data;
 
-					// Update tokens in storage and state
 					setAccessToken(access_token);
 					setRefreshToken(newRefreshToken);
 
 					console.log("Token refreshed successfully");
-
-					// Schedule next refresh
 					scheduleTokenRefresh(access_token);
 				} catch (error) {
 					console.error("Proactive token refresh failed:", error);
-					// Don't clear auth here - the interceptor will handle it on next request
 				}
 			}, refreshIn);
 		},
-		[setAccessToken, setRefreshToken],
+		[clearRefreshTimer, setAccessToken, setRefreshToken],
 	);
 
-	/**
-	 * Clear the refresh timer
-	 */
-	const clearRefreshTimer = useCallback(() => {
-		if (refreshTimerRef.current) {
-			clearTimeout(refreshTimerRef.current);
-			refreshTimerRef.current = null;
-		}
-	}, []);
+	const signIn = useCallback(
+		async (email: string, password: string): Promise<void> => {
+			const response = await authApi.login({ email, password });
 
-	/**
-	 * Sign in with email and password
-	 */
-	const signIn = async (email: string, password: string): Promise<void> => {
-		const response = await authApi.login({ email, password });
+			setAccessToken(response.access_token);
+			setRefreshToken(response.refresh_token);
 
-		// Store tokens
-		setAccessToken(response.access_token);
-		setRefreshToken(response.refresh_token);
+			try {
+				const userResponse = await authApi.getMe();
+				const storedUser: StoredUser = {
+					id: userResponse.id,
+					full_name: userResponse.full_name,
+					email: userResponse.email,
+				};
+				await setUserData(storedUser);
+				setUser(storedUser);
+			} catch (error) {
+				console.error("Failed to fetch user profile:", error);
+			}
 
-		// Fetch and store user email
-		try {
-			const user = await authApi.getMe();
-			setUserEmail(user.email);
-		} catch (error) {
-			console.error("Failed to fetch user profile:", error);
-			// Still allow login even if profile fetch fails
-		}
+			scheduleTokenRefresh(response.access_token);
+		},
+		[setAccessToken, setRefreshToken, scheduleTokenRefresh],
+	);
 
-		// Schedule proactive refresh
-		scheduleTokenRefresh(response.access_token);
-	};
+	const signUp = useCallback(
+		async (data: RegisterRequest): Promise<void> => {
+			await authApi.register(data);
+			await signIn(data.email, data.password);
+		},
+		[signIn],
+	);
 
-	/**
-	 * Sign up with registration data
-	 */
-	const signUp = async (data: RegisterRequest): Promise<void> => {
-		const user = await authApi.register(data);
-		await signIn(user.email, data.password);
-	};
-
-	/**
-	 * Sign out - call backend logout then clear local storage
-	 */
-	const signOut = async (): Promise<void> => {
-		// Clear refresh timer
+	const signOut = useCallback(async (): Promise<void> => {
 		clearRefreshTimer();
 
 		try {
-			// Call backend logout to revoke refresh token
 			const currentRefreshToken = await getStorageItemAsync(
 				STORAGE_KEYS.REFRESH_TOKEN,
 			);
@@ -185,31 +169,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			}
 		} catch (error) {
 			console.error("Backend logout failed:", error);
-			// Continue with local logout even if backend fails
 		}
 
-		// Clear local storage
 		await clearAuthStorage();
 
-		// Update state
 		setAccessToken(null);
 		setRefreshToken(null);
-		setUserEmail(null);
-	};
+		setUser(null);
+	}, [clearRefreshTimer, setAccessToken, setRefreshToken]);
 
-	// Set up auth failure callback for API interceptor
+	// Set up auth failure callback
 	useEffect(() => {
 		setAuthFailureCallback(() => {
 			clearRefreshTimer();
 			setAccessToken(null);
 			setRefreshToken(null);
-			setUserEmail(null);
+			setUser(null);
 		});
 
 		return () => {
 			setAuthFailureCallback(() => {});
 		};
-	}, [clearRefreshTimer, setAccessToken, setRefreshToken, setUserEmail]);
+	}, [clearRefreshTimer, setAccessToken, setRefreshToken]);
 
 	// Set up proactive refresh when access token changes
 	useEffect(() => {
@@ -229,18 +210,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		};
 	}, [clearRefreshTimer]);
 
-	return (
-		<AuthContext.Provider
-			value={{
-				session: accessToken,
-				userEmail,
-				isLoading,
-				signIn,
-				signUp,
-				signOut,
-			}}
-		>
-			{children}
-		</AuthContext.Provider>
+	const value = useMemo<AuthContextType>(
+		() => ({
+			session: accessToken,
+			user,
+			isLoading,
+			signIn,
+			signUp,
+			signOut,
+		}),
+		[accessToken, user, isLoading, signIn, signUp, signOut],
 	);
+
+	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

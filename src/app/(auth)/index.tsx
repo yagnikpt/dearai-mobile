@@ -8,7 +8,7 @@ export default function App() {
 	const router = useRouter();
 
 	return (
-		<View className="flex-1">
+		<View className="flex-1 bg-background">
 			<Image
 				contentFit="cover"
 				source={require("../../assets/images/onboarding_1.jpeg")}

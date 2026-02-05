@@ -109,7 +109,7 @@ export default function SignupScreen() {
 	);
 
 	return (
-		<KeyboardAvoidingView className="flex-1" behavior="padding">
+		<KeyboardAvoidingView className="flex-1 bg-background" behavior="padding">
 			<SafeAreaView style={{ flex: 1 }}>
 				<ScrollView
 					contentContainerStyle={{
@@ -119,7 +119,6 @@ export default function SignupScreen() {
 					keyboardShouldPersistTaps="handled"
 					style={{
 						flex: 1,
-						backgroundColor: "#F8FAFC",
 					}}
 				>
 					<View className="flex-1 px-6 py-6">

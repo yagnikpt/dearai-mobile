@@ -53,7 +53,7 @@ export default function SignInScreen() {
 	return (
 		<KeyboardAvoidingView
 			contentContainerStyle={{ flex: 1 }}
-			className="flex-1"
+			className="flex-1 bg-background"
 			behavior="position"
 		>
 			{/*<SafeAreaView style={{ flex: 1 }}>*/}

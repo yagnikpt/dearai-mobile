@@ -4,14 +4,34 @@ import axios, {
 	type InternalAxiosRequestConfig,
 } from "axios";
 import Constants from "expo-constants";
+
 import {
 	clearAuthStorage,
 	getStorageItemAsync,
-	isTokenExpired,
 	STORAGE_KEYS,
 	setStorageItemAsync,
 } from "./auth";
+import { PUBLIC_ENDPOINTS, TOKEN_REFRESH_BUFFER_SECONDS } from "./constants";
+import { isTokenExpired } from "./jwt";
+import type {
+	LoginRequest,
+	LogoutResponse,
+	RegisterRequest,
+	TokenResponse,
+	UserResponse,
+} from "./types/auth";
 
+// Re-export types for convenience
+export type {
+	LoginRequest,
+	LogoutRequest,
+	LogoutResponse,
+	RegisterRequest,
+	TokenResponse,
+	UserResponse,
+} from "./types/auth";
+
+// API Base URL Configuration
 function getApiBaseUrl(): string {
 	if (process.env.EXPO_PUBLIC_API_URL) {
 		return process.env.EXPO_PUBLIC_API_URL;
@@ -29,27 +49,29 @@ function getApiBaseUrl(): string {
 	return "http://localhost:8000";
 }
 
-const API_BASE_URL = getApiBaseUrl();
+export const API_BASE_URL = getApiBaseUrl();
 
-// Token refresh state to prevent multiple simultaneous refresh calls
-let isRefreshing = false;
-let failedQueue: {
+// Token refresh queue management
+interface QueueItem {
 	resolve: (value: string | null) => void;
 	reject: (error: Error) => void;
-}[] = [];
+}
+
+let isRefreshing = false;
+let failedQueue: QueueItem[] = [];
 
 const processQueue = (error: Error | null, token: string | null = null) => {
-	failedQueue.forEach((prom) => {
+	failedQueue.forEach((item) => {
 		if (error) {
-			prom.reject(error);
+			item.reject(error);
 		} else {
-			prom.resolve(token);
+			item.resolve(token);
 		}
 	});
 	failedQueue = [];
 };
 
-// Callback for when auth fails completely (will be set by AuthContext)
+// Auth failure callback
 let onAuthFailure: (() => void) | null = null;
 
 export function setAuthFailureCallback(callback: () => void) {
@@ -58,7 +80,6 @@ export function setAuthFailureCallback(callback: () => void) {
 
 /**
  * Refresh the access token using the refresh token
- * Returns the new access token or null if refresh failed
  */
 async function refreshAccessToken(): Promise<string | null> {
 	try {
@@ -68,9 +89,12 @@ async function refreshAccessToken(): Promise<string | null> {
 		}
 
 		// Use a fresh axios instance to avoid interceptor loops
-		const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-			refresh_token: refreshToken,
-		});
+		const response = await axios.post<TokenResponse>(
+			`${API_BASE_URL}/auth/refresh`,
+			{
+				refresh_token: refreshToken,
+			},
+		);
 
 		const { access_token, refresh_token: newRefreshToken } = response.data;
 
@@ -88,6 +112,38 @@ async function refreshAccessToken(): Promise<string | null> {
 }
 
 /**
+ * Handle token refresh with queue management
+ */
+async function handleTokenRefresh(): Promise<string | null> {
+	if (!isRefreshing) {
+		isRefreshing = true;
+		try {
+			const token = await refreshAccessToken();
+			processQueue(null, token);
+			return token;
+		} catch (error) {
+			processQueue(error as Error, null);
+			throw error;
+		} finally {
+			isRefreshing = false;
+		}
+	}
+
+	// Wait for ongoing refresh
+	return new Promise<string | null>((resolve, reject) => {
+		failedQueue.push({ resolve, reject });
+	});
+}
+
+/**
+ * Check if URL is a public endpoint
+ */
+function isPublicEndpoint(url: string | undefined): boolean {
+	if (!url) return false;
+	return PUBLIC_ENDPOINTS.some((endpoint) => url.includes(endpoint));
+}
+
+/**
  * Create the axios instance with interceptors
  */
 function createApiClient(): AxiosInstance {
@@ -101,39 +157,19 @@ function createApiClient(): AxiosInstance {
 	// Request interceptor - attach access token and proactively refresh if needed
 	api.interceptors.request.use(
 		async (config: InternalAxiosRequestConfig) => {
-			const publicEndpoints = [
-				"/auth/login",
-				"/auth/register",
-				"/auth/refresh",
-				"/health",
-			];
-			if (publicEndpoints.some((endpoint) => config.url?.includes(endpoint))) {
+			if (isPublicEndpoint(config.url)) {
 				return config;
 			}
 
 			let accessToken = await getStorageItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
 
-			// Proactively refresh if token is about to expire (within 60 seconds)
-			if (accessToken && isTokenExpired(accessToken, 60)) {
+			// Proactively refresh if token is about to expire
+			if (
+				accessToken &&
+				isTokenExpired(accessToken, TOKEN_REFRESH_BUFFER_SECONDS)
+			) {
 				console.log("Token about to expire, refreshing proactively...");
-
-				if (!isRefreshing) {
-					isRefreshing = true;
-
-					try {
-						accessToken = await refreshAccessToken();
-						processQueue(null, accessToken);
-					} catch (error) {
-						processQueue(error as Error, null);
-					} finally {
-						isRefreshing = false;
-					}
-				} else {
-					// Wait for the ongoing refresh to complete
-					accessToken = await new Promise<string | null>((resolve, reject) => {
-						failedQueue.push({ resolve, reject });
-					});
-				}
+				accessToken = await handleTokenRefresh();
 			}
 
 			if (accessToken) {
@@ -162,48 +198,20 @@ function createApiClient(): AxiosInstance {
 
 				originalRequest._retry = true;
 
-				if (!isRefreshing) {
-					isRefreshing = true;
+				try {
+					const newToken = await handleTokenRefresh();
 
-					try {
-						const newToken = await refreshAccessToken();
-
-						if (newToken) {
-							processQueue(null, newToken);
-							originalRequest.headers.Authorization = `Bearer ${newToken}`;
-							return api(originalRequest);
-						} else {
-							// Refresh failed - clear auth and notify
-							processQueue(new Error("Token refresh failed"), null);
-							await clearAuthStorage();
-							onAuthFailure?.();
-							return Promise.reject(error);
-						}
-					} catch (refreshError) {
-						processQueue(refreshError as Error, null);
-						await clearAuthStorage();
-						onAuthFailure?.();
-						return Promise.reject(refreshError);
-					} finally {
-						isRefreshing = false;
+					if (newToken) {
+						originalRequest.headers.Authorization = `Bearer ${newToken}`;
+						return api(originalRequest);
 					}
-				} else {
-					// Wait for the ongoing refresh to complete
-					try {
-						const token = await new Promise<string | null>(
-							(resolve, reject) => {
-								failedQueue.push({ resolve, reject });
-							},
-						);
-
-						if (token) {
-							originalRequest.headers.Authorization = `Bearer ${token}`;
-							return api(originalRequest);
-						}
-					} catch (queueError) {
-						return Promise.reject(queueError);
-					}
+				} catch {
+					// Token refresh failed
 				}
+
+				// Refresh failed - clear auth and notify
+				await clearAuthStorage();
+				onAuthFailure?.();
 			}
 
 			return Promise.reject(error);
@@ -215,44 +223,6 @@ function createApiClient(): AxiosInstance {
 
 // Export the configured API client
 export const api = createApiClient();
-
-// Export base URL for any direct usage
-export { API_BASE_URL };
-
-// API Types based on OpenAPI spec
-export interface LoginRequest {
-	email: string;
-	password: string;
-}
-
-export interface RegisterRequest {
-	full_name: string;
-	email: string;
-	password: string;
-}
-
-export interface TokenResponse {
-	access_token: string;
-	refresh_token: string;
-	token_type: string;
-}
-
-export interface UserResponse {
-	id: string;
-	full_name: string;
-	email: string;
-	gender?: "male" | "female" | "other" | "prefer_not_to_say" | null;
-	age?: number | null;
-	created_at: string;
-}
-
-export interface LogoutRequest {
-	refresh_token: string;
-}
-
-export interface LogoutResponse {
-	message: string;
-}
 
 // Auth API functions
 export const authApi = {

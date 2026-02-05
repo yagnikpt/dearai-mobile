@@ -10,11 +10,13 @@
   --font-sans-semibold: "Rubik-SemiBold";
   --font-sans-bold: "Rubik-Bold";
   --font-sans-black: "Rubik-Black";
+  --font-sans-italic: "Rubik-Italic-Regular";
   --font-serif: "DMSerifDisplay";
 }
 
 @layer theme {
     @variant light {
-        --accent: oklch(0.5905 0.0674 142.65);
+        --background: oklch(0.9688 0.0119 79.78);
+        --accent: oklch(0.5583 0.0649 195.45);
     }
 }
