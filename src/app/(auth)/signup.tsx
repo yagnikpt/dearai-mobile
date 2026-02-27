@@ -1,10 +1,17 @@
 import { AxiosError } from "axios";
 import { Link, router } from "expo-router";
+import { Alert } from "heroui-native/alert";
 import { Button } from "heroui-native/button";
 import { Input } from "heroui-native/input";
 import { TextField } from "heroui-native/text-field";
 import { useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, View } from "react-native";
+import {
+	ActivityIndicator,
+	Alert as RNAlert,
+	ScrollView,
+	Text,
+	View,
+} from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
@@ -50,7 +57,7 @@ export default function SignupScreen() {
 				password: password,
 			});
 
-			Alert.alert(
+			RNAlert.alert(
 				"Account Created",
 				"Your account has been created successfully. Please sign in.",
 				[
@@ -154,19 +161,12 @@ export default function SignupScreen() {
 							)}
 
 							{error ? (
-								<View
-									className="bg-red-50 border-red-200 rounded-xl p-4 border"
-									style={{
-										borderCurve: "continuous",
-									}}
-								>
-									<Text
-										className="text-danger font-sans-medium text-sm text-center"
-										selectable
-									>
-										{error}
-									</Text>
-								</View>
+								<Alert status="danger" className="rounded-2xl">
+									<Alert.Indicator />
+									<Alert.Content>
+										<Alert.Title>{error}</Alert.Title>
+									</Alert.Content>
+								</Alert>
 							) : null}
 
 							<Button

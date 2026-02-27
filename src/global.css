@@ -18,5 +18,17 @@
     @variant light {
         --background: oklch(0.9688 0.0119 79.78);
         --accent: oklch(0.5583 0.0649 195.45);
+        --secondary: oklch(0.9286 0.035 63.22);
+        --secondary-foreground: var(--foreground);
+        /*--default: oklch(0.9664 0.0264 102.22);*/
     }
+    @variant dark {
+        --secondary: oklch(0.9286 0.035 63.22);
+        --secondary-foreground: var(--foreground);
+    }
+}
+
+@theme inline {
+  --secondary: var(--secondary);
+  --secondary-foreground: var(--secondary-foreground);
 }

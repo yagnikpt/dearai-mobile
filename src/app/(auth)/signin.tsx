@@ -1,11 +1,11 @@
 import { AxiosError } from "axios";
 import { Image } from "expo-image";
 import { Link } from "expo-router";
+import { Alert } from "heroui-native/alert";
 import { Button } from "heroui-native/button";
-import { FieldError } from "heroui-native/field-error";
 import { Input } from "heroui-native/input";
 import { useState } from "react";
-import { ActivityIndicator, Alert, Text, View } from "react-native";
+import { ActivityIndicator, Alert as RNAlert, Text, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useAuth } from "@/context/AuthContext";
 
@@ -18,7 +18,7 @@ export default function SignInScreen() {
 
 	const handleSignIn = async () => {
 		if (!email.trim() || !password.trim()) {
-			Alert.alert("Error", "Please enter email and password");
+			RNAlert.alert("Error", "Please enter email and password");
 			return;
 		}
 
@@ -94,8 +94,15 @@ export default function SignInScreen() {
 						secureTextEntry
 						variant="secondary"
 					/>
-					<FieldError isInvalid={!!errorMsg}>{errorMsg}</FieldError>
 				</View>
+				{errorMsg ? (
+					<Alert status="danger" className="rounded-2xl mt-2">
+						<Alert.Indicator />
+						<Alert.Content>
+							<Alert.Title>{errorMsg}</Alert.Title>
+						</Alert.Content>
+					</Alert>
+				) : null}
 				<Button
 					onPress={handleSignIn}
 					isDisabled={isLoading}

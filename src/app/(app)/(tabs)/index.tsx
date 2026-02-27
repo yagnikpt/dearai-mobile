@@ -1,5 +1,8 @@
+import { randomUUID } from "expo-crypto";
+import { useRouter } from "expo-router";
 import { Button } from "heroui-native/button";
 import { PressableFeedback } from "heroui-native/pressable-feedback";
+import { Spinner } from "heroui-native/spinner";
 import {
 	BellIcon,
 	FlowerIcon,
@@ -12,6 +15,7 @@ import { Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { withUniwind } from "uniwind";
 import { useAuth } from "@/context/AuthContext";
+import { getFirstName, getTodaysDate } from "@/utils/ui-format";
 
 const StyledSafeAreaView = withUniwind(SafeAreaView);
 const StyledWindIcon = withUniwind(WindIcon);
@@ -21,21 +25,41 @@ const StyledFlowerIcon = withUniwind(FlowerIcon);
 const StyledMessagesSquareIcon = withUniwind(MessagesSquareIcon);
 
 export default function Index() {
-	const { user } = useAuth();
+	const { user, signOut } = useAuth();
+	const router = useRouter();
+
+	function newCompanionVoiceChat() {
+		const chatId = randomUUID();
+		router.navigate(`/companion/${chatId}?new=true`);
+	}
+
+	if (!user)
+		return (
+			<View className="flex-1 bg-background justify-center items-center">
+				<Spinner size="lg" />
+			</View>
+		);
+
+	const date = getTodaysDate();
+	const firstName = getFirstName(user.full_name);
 
 	return (
 		<StyledSafeAreaView className="flex-1 bg-background">
 			<View className="px-6 mt-2 flex-row items-center justify-between">
 				<View className="flex-row items-center gap-x-2">
-					<UserIcon size={32} />
+					<UserIcon size={32} strokeWidth={1.5} />
 					<View>
 						<Text className="text-lg font-sans-medium text-foreground">
-							Good Morning, {user?.full_name.split(" ")[0]}
+							Good Morning, {firstName}
 						</Text>
-						<Text className="text-sm text-muted">Mon, Oct 24</Text>
+						<Text className="text-sm text-muted">{date}</Text>
 					</View>
 				</View>
-				<Button variant="ghost" isIconOnly>
+				<Button
+					onPress={async () => await signOut()}
+					variant="ghost"
+					isIconOnly
+				>
 					<StyledBellIcon className="size-20" />
 				</Button>
 			</View>
@@ -59,10 +83,12 @@ export default function Index() {
 					</Text>
 				</View>
 				<View className="flex-row gap-4 mt-4">
-					<PressableFeedback className="p-8 flex-1 basis-1/2 items-center bg-accent/10 border border-accent/20 rounded-3xl">
-						<PressableFeedback.Ripple />
+					<PressableFeedback
+						onPress={newCompanionVoiceChat}
+						className="px-4 py-8 flex-1 basis-1/2 items-center bg-accent/5 border border-accent/20 rounded-3xl"
+					>
 						<View className="bg-accent/50 p-4 rounded-full items-center justify-center">
-							<StyledFlowerIcon className="text-white" />
+							<StyledFlowerIcon className="text-accent-foreground" />
 						</View>
 						<Text className="text-lg font-sans-medium text-foreground mt-2">
 							Companion
@@ -71,10 +97,9 @@ export default function Index() {
 							Deep reflection & therepeutic support
 						</Text>
 					</PressableFeedback>
-					<PressableFeedback className="p-8 flex-1 basis-1/2 items-center bg-danger/5 border border-danger/20 rounded-3xl">
-						<PressableFeedback.Ripple />
+					<PressableFeedback className="px-4 py-8 flex-1 basis-1/2 items-center bg-danger/5 border border-danger/20 rounded-3xl">
 						<View className="bg-danger/50 p-4 rounded-full items-center justify-center">
-							<StyledMessagesSquareIcon className="text-white" />
+							<StyledMessagesSquareIcon className="text-accent-foreground" />
 						</View>
 						<Text className="text-lg font-sans-medium text-foreground mt-2">
 							Friend
@@ -84,7 +109,7 @@ export default function Index() {
 						</Text>
 					</PressableFeedback>
 				</View>
-				<Button className="h-16 mt-4 bg-white" variant="outline" size="lg">
+				<Button className="h-16 mt-4 bg-surface" variant="outline" size="lg">
 					<StyledWindIcon size={20} className="text-foreground" />
 					<Button.Label className="font-sans text-foreground">
 						Start Breathing
