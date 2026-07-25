@@ -19,7 +19,7 @@ import {
 // API Base URL Configuration
 function getApiBaseUrl(): string {
 	if (process.env.EXPO_PUBLIC_API_URL) {
-		return process.env.EXPO_PUBLIC_API_URL;
+		return `https://${process.env.EXPO_PUBLIC_API_HOST_URL}`;
 	}
 
 	const expoUrl = Constants.expoConfig?.hostUri || Constants.experienceUrl;
@@ -34,7 +34,12 @@ function getApiBaseUrl(): string {
 	return "http://localhost:8000";
 }
 
+function getWebsocketUrl(): string {
+	return `wss://${process.env.EXPO_PUBLIC_API_HOST_URL}`;
+}
+
 export const API_BASE_URL = getApiBaseUrl();
+export const WEBSOCKET_URL = getWebsocketUrl();
 
 // Auth failure callback — called when a 401 can't be recovered
 let onAuthFailure: (() => void) | null = null;

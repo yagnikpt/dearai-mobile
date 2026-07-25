@@ -8,20 +8,14 @@ export default function TabLayout() {
 		<NativeTabs tintColor={accentColor?.toString()} rippleColor={"none"}>
 			<NativeTabs.Trigger name="index">
 				<NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
-				<NativeTabs.Trigger.Icon md="home" />
+				<NativeTabs.Trigger.Icon
+					md={{ default: "home", selected: "home_filled" }}
+				/>
 			</NativeTabs.Trigger>
-			{/*<NativeTabs.Trigger name="insights">
-				<NativeTabs.Trigger.Label>Insights</NativeTabs.Trigger.Label>
-				<NativeTabs.Trigger.Icon md="bubbles" />
+			<NativeTabs.Trigger name="breathing">
+				<NativeTabs.Trigger.Label>Breathe</NativeTabs.Trigger.Label>
+				<NativeTabs.Trigger.Icon md="airwave" />
 			</NativeTabs.Trigger>
-			<NativeTabs.Trigger name="journey">
-				<NativeTabs.Trigger.Label>Journey</NativeTabs.Trigger.Label>
-				<NativeTabs.Trigger.Icon md="book_ribbon" />
-			</NativeTabs.Trigger>
-			<NativeTabs.Trigger name="profile">
-				<NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>
-				<NativeTabs.Trigger.Icon md="person" />
-			</NativeTabs.Trigger>*/}
 		</NativeTabs>
 	);
 }

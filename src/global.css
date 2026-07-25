@@ -1,34 +1,33 @@
 @import "tailwindcss";
 @import "uniwind";
-@import 'heroui-native/styles';
-@source '../node_modules/heroui-native/lib';
+@import "heroui-native/styles";
+@source "../node_modules/heroui-native/lib";
 
 @theme {
-  --font-sans-light: "Rubik-Light";
-  --font-sans: "Rubik-Regular";
-  --font-sans-medium: "Rubik-Medium";
-  --font-sans-semibold: "Rubik-SemiBold";
-  --font-sans-bold: "Rubik-Bold";
-  --font-sans-black: "Rubik-Black";
-  --font-sans-italic: "Rubik-Italic-Regular";
-  --font-serif: "DMSerifDisplay";
+    --font-sans-light: "Rubik-Light";
+    --font-sans: "Rubik-Regular";
+    --font-sans-medium: "Rubik-Medium";
+    --font-sans-semibold: "Rubik-SemiBold";
+    --font-sans-bold: "Rubik-Bold";
+    --font-sans-black: "Rubik-Black";
+    --font-sans-italic: "Rubik-Italic-Regular";
+    --font-serif: "DMSerifDisplay";
 }
 
 @layer theme {
     @variant light {
         --background: oklch(0.9688 0.0119 79.78);
-        --accent: oklch(0.5583 0.0649 195.45);
+        --accent: oklch(0.6287 0.0527 160.22);
         --secondary: oklch(0.9286 0.035 63.22);
-        --secondary-foreground: var(--foreground);
-        /*--default: oklch(0.9664 0.0264 102.22);*/
+        /*--secondary-foreground: var(--foreground);*/
     }
     @variant dark {
         --secondary: oklch(0.9286 0.035 63.22);
-        --secondary-foreground: var(--foreground);
+        /*--secondary-foreground: var(--foreground);*/
     }
 }
 
 @theme inline {
-  --secondary: var(--secondary);
-  --secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--foreground);
 }

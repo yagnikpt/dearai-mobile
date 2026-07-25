@@ -1,44 +1,21 @@
-import { randomUUID } from "expo-crypto";
-import { useRouter } from "expo-router";
+import { SymbolView } from "expo-symbols";
 import { Button } from "heroui-native/button";
 import { PressableFeedback } from "heroui-native/pressable-feedback";
 import { Spinner } from "heroui-native/spinner";
-import {
-	BellIcon,
-	FlowerIcon,
-	MessagesSquareIcon,
-	SparklesIcon,
-	UserIcon,
-	WindIcon,
-} from "lucide-react-native";
+import { SparklesIcon } from "lucide-react-native";
 import { Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { withUniwind } from "uniwind";
+import { useCSSVariable, withUniwind } from "uniwind";
 import { useAuth } from "@/context/AuthContext";
 import { getFirstName, getTodaysDate } from "@/utils/ui-format";
 
 const StyledSafeAreaView = withUniwind(SafeAreaView);
-const StyledWindIcon = withUniwind(WindIcon);
-const StyledBellIcon = withUniwind(BellIcon);
 const StyledSparklesIcon = withUniwind(SparklesIcon);
-const StyledFlowerIcon = withUniwind(FlowerIcon);
-const StyledMessagesSquareIcon = withUniwind(MessagesSquareIcon);
 
 export default function Index() {
-	// Mock auth setup
-	// const { user, signOut } = useAuth();
-	const user = { full_name: "Yagnik Patel" };
-	const signOut = async () => {};
-	const router = useRouter();
+	const { user } = useAuth();
 
-	function newCompanionVoiceChat() {
-		const chatId = randomUUID();
-		router.navigate(`/companion/${chatId}?new=true`);
-	}
-
-	function breathingExercise() {
-		router.navigate("/breathing");
-	}
+	const fgColor = useCSSVariable("--color-foreground");
 
 	if (!user)
 		return (
@@ -51,27 +28,17 @@ export default function Index() {
 	const firstName = getFirstName(user.full_name);
 
 	return (
-		<StyledSafeAreaView className="flex-1 bg-background">
-			<View className="px-6 mt-2 flex-row items-center justify-between">
-				<View className="flex-row items-center gap-x-2">
-					<UserIcon size={32} strokeWidth={1.5} />
-					<View>
-						<Text className="text-lg font-sans-medium text-foreground">
-							Good Morning, {firstName}
-						</Text>
-						<Text className="text-sm text-muted">{date}</Text>
-					</View>
-				</View>
-				<Button
-					onPress={async () => await signOut()}
-					variant="ghost"
-					isIconOnly
-				>
-					<StyledBellIcon className="size-20" />
-				</Button>
+		<StyledSafeAreaView edges={["top"]} className="flex-1 bg-background">
+			<View className="px-7 mt-4">
+				<Text className="text-3xl font-sans-medium">Good Morning,</Text>
+				<Text className="text-3xl font-sans-medium text-accent">
+					{firstName}
+				</Text>
+				<Text className="mt-2 text-muted">{date}</Text>
 			</View>
+
 			<View className="flex-1 py-4 px-6">
-				<View className="bg-[#F9E3D0] py-6 px-8 gap-2 rounded-3xl">
+				<View className="bg-surface border border-border py-6 px-4 gap-2 rounded-3xl">
 					<View className="flex-row gap-2 items-center">
 						<StyledSparklesIcon className="text-muted" size={16} />
 						<Text
@@ -89,43 +56,58 @@ export default function Index() {
 						”
 					</Text>
 				</View>
+				<Text className="text-base pl-1 mt-4 font-sans text-foreground">
+					How can I help you today?
+				</Text>
 				<View className="flex-row gap-4 mt-4">
-					<PressableFeedback
-						onPress={newCompanionVoiceChat}
-						className="px-4 py-8 flex-1 basis-1/2 items-center bg-accent/5 border border-accent/20 rounded-3xl"
-					>
-						<View className="bg-accent/50 p-4 rounded-full items-center justify-center">
-							<StyledFlowerIcon className="text-accent-foreground" />
-						</View>
-						<Text className="text-lg font-sans-medium text-foreground mt-2">
-							Companion
-						</Text>
-						<Text className="font-sans text-xs text-muted text-center">
-							Deep reflection & therepeutic support
-						</Text>
+					<PressableFeedback className="gap-y-8 p-4 bg-surface/70 shadow-sm border border-border rounded-2xl flex-1">
+						<SymbolView
+							tintColor={fgColor?.toString()}
+							name={{ ios: "air.purifier", android: "air" }}
+							size={28}
+						/>
+						<Text className="font-sans text-lg">I need to vent</Text>
 					</PressableFeedback>
-					<PressableFeedback className="px-4 py-8 flex-1 basis-1/2 items-center bg-danger/5 border border-danger/20 rounded-3xl">
-						<View className="bg-danger/50 p-4 rounded-full items-center justify-center">
-							<StyledMessagesSquareIcon className="text-accent-foreground" />
-						</View>
-						<Text className="text-lg font-sans-medium text-foreground mt-2">
-							Friend
-						</Text>
-						<Text className="font-sans text-xs text-muted text-center">
-							Casual chats & daily venting
-						</Text>
+					<PressableFeedback className="gap-y-8 p-4 bg-surface/70 shadow-sm border border-border rounded-2xl flex-1">
+						<SymbolView
+							tintColor={fgColor?.toString()}
+							name={{ ios: "air.purifier", android: "self_improvement" }}
+							size={28}
+						/>
+						<Text className="font-sans text-lg">Help me relax</Text>
+					</PressableFeedback>
+				</View>
+				<View className="flex-row gap-4 mt-4">
+					<PressableFeedback className="gap-y-8 p-4 bg-surface/70 shadow-sm border border-border rounded-2xl flex-1">
+						<SymbolView
+							tintColor={fgColor?.toString()}
+							name={{ ios: "air.purifier", android: "bedtime" }}
+							size={28}
+						/>
+						<Text className="font-sans text-lg">I can't sleep</Text>
+					</PressableFeedback>
+					<PressableFeedback className="gap-y-8 p-4 bg-surface/70 shadow-sm border border-border rounded-2xl flex-1">
+						<SymbolView
+							tintColor={fgColor?.toString()}
+							name={{ ios: "air.purifier", android: "mindfulness" }}
+							size={28}
+						/>
+						<Text className="font-sans text-lg">Just feeling off</Text>
 					</PressableFeedback>
 				</View>
 				<Button
-					onPress={breathingExercise}
-					className="h-16 mt-4 bg-surface"
+					className="h-16 bg-surface justify-between px-8 mt-auto"
 					variant="outline"
 					size="lg"
 				>
-					<StyledWindIcon size={20} className="text-foreground" />
 					<Button.Label className="font-sans text-foreground">
-						Start Breathing
+						Start Chating...
 					</Button.Label>
+					<SymbolView
+						name={{ ios: "mic", android: "mic", web: "mic" }}
+						tintColor={fgColor?.toString()}
+						size={20}
+					/>
 				</Button>
 			</View>
 		</StyledSafeAreaView>
