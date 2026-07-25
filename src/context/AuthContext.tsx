@@ -5,29 +5,24 @@ import {
 	useContext,
 	useEffect,
 	useMemo,
-	useRef,
 	useState,
 } from "react";
+import {
+	GoogleOneTapSignIn,
+	isNoSavedCredentialFoundResponse,
+	isSuccessResponse,
+} from "react-native-nitro-google-signin";
 
-import { api, authApi, setAuthFailureCallback } from "@/lib/api";
+import { setAuthFailureCallback } from "@/lib/api";
 import {
 	clearAuthStorage,
 	getStorageItemAsync,
 	getUserData,
 	STORAGE_KEYS,
+	setStorageItemAsync,
 	setUserData,
-	useStorageState,
 } from "@/lib/auth";
-import {
-	MIN_REFRESH_DELAY_MS,
-	TOKEN_REFRESH_BUFFER_SECONDS,
-} from "@/lib/constants";
-import { getTokenExpirationTime, isTokenExpired } from "@/lib/jwt";
-import type {
-	AuthContextType,
-	RegisterRequest,
-	StoredUser,
-} from "@/lib/types/auth";
+import type { AuthContextType, StoredUser } from "@/lib/types/auth";
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -49,177 +44,93 @@ export function useSession() {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-	const [[isLoadingAccessToken, accessToken], setAccessToken] = useStorageState(
-		STORAGE_KEYS.ACCESS_TOKEN,
-	);
-	const [[isLoadingRefreshToken], setRefreshToken] = useStorageState(
-		STORAGE_KEYS.REFRESH_TOKEN,
-	);
-
-	// User data state
+	const [session, setSession] = useState<string | null>(null);
 	const [user, setUser] = useState<StoredUser | null>(null);
-	const [isLoadingUser, setIsLoadingUser] = useState(true);
+	const [isLoading, setIsLoading] = useState(true);
 
-	const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-	const isLoading =
-		isLoadingAccessToken || isLoadingRefreshToken || isLoadingUser;
-
-	// Load user data on mount
+	// Load persisted session and user data on mount
 	useEffect(() => {
-		getUserData()
-			.then(setUser)
-			.finally(() => setIsLoadingUser(false));
+		async function loadSession() {
+			try {
+				const [idToken, userData] = await Promise.all([
+					getStorageItemAsync(STORAGE_KEYS.ID_TOKEN),
+					getUserData(),
+				]);
+				setSession(idToken);
+				setUser(userData);
+			} catch (e) {
+				console.error("Failed to load session:", e);
+			} finally {
+				setIsLoading(false);
+			}
+		}
+		loadSession();
 	}, []);
 
-	const clearRefreshTimer = useCallback(() => {
-		if (refreshTimerRef.current) {
-			clearTimeout(refreshTimerRef.current);
-			refreshTimerRef.current = null;
+	const signIn = useCallback(async (): Promise<void> => {
+		await GoogleOneTapSignIn.checkPlayServices();
+
+		let response = await GoogleOneTapSignIn.signIn();
+
+		if (isNoSavedCredentialFoundResponse(response)) {
+			response = await GoogleOneTapSignIn.createAccount();
+		}
+		if (isNoSavedCredentialFoundResponse(response)) {
+			response = await GoogleOneTapSignIn.presentExplicitSignIn();
+		}
+
+		if (isSuccessResponse(response)) {
+			const { idToken, user: googleUser } = response.data;
+
+			console.log(idToken, googleUser);
+
+			const storedUser: StoredUser = {
+				id: googleUser.id,
+				full_name: googleUser.name ?? googleUser.email ?? "",
+				email: googleUser.email ?? "",
+				photo: googleUser.photo,
+			};
+
+			await Promise.all([
+				setStorageItemAsync(STORAGE_KEYS.ID_TOKEN, idToken),
+				setUserData(storedUser),
+			]);
 		}
 	}, []);
 
-	const scheduleTokenRefresh = useCallback(
-		(token: string) => {
-			clearRefreshTimer();
-
-			const timeUntilExpiry = getTokenExpirationTime(token);
-			const refreshIn = Math.max(
-				timeUntilExpiry - TOKEN_REFRESH_BUFFER_SECONDS * 1000,
-				MIN_REFRESH_DELAY_MS,
-			);
-
-			console.log(
-				`Scheduling token refresh in ${Math.round(refreshIn / 1000)} seconds`,
-			);
-
-			refreshTimerRef.current = setTimeout(async () => {
-				console.log("Proactively refreshing token...");
-				try {
-					const currentRefreshToken = await getStorageItemAsync(
-						STORAGE_KEYS.REFRESH_TOKEN,
-					);
-					if (!currentRefreshToken) {
-						console.log("No refresh token available, skipping refresh");
-						return;
-					}
-
-					const response = await api.post("/auth/refresh", {
-						refresh_token: currentRefreshToken,
-					});
-
-					const { access_token, refresh_token: newRefreshToken } =
-						response.data;
-
-					setAccessToken(access_token);
-					setRefreshToken(newRefreshToken);
-
-					console.log("Token refreshed successfully");
-					scheduleTokenRefresh(access_token);
-				} catch (error) {
-					console.error("Proactive token refresh failed:", error);
-				}
-			}, refreshIn);
-		},
-		[clearRefreshTimer, setAccessToken, setRefreshToken],
-	);
-
-	const signIn = useCallback(
-		async (email: string, password: string): Promise<void> => {
-			const response = await authApi.login({ email, password });
-
-			setAccessToken(response.access_token);
-			setRefreshToken(response.refresh_token);
-
-			try {
-				const userResponse = await authApi.getMe();
-				const storedUser: StoredUser = {
-					id: userResponse.id,
-					full_name: userResponse.full_name,
-					email: userResponse.email,
-				};
-				await setUserData(storedUser);
-				setUser(storedUser);
-			} catch (error) {
-				console.error("Failed to fetch user profile:", error);
-			}
-
-			scheduleTokenRefresh(response.access_token);
-		},
-		[setAccessToken, setRefreshToken, scheduleTokenRefresh],
-	);
-
-	const signUp = useCallback(
-		async (data: RegisterRequest): Promise<void> => {
-			await authApi.register(data);
-			await signIn(data.email, data.password);
-		},
-		[signIn],
-	);
-
 	const signOut = useCallback(async (): Promise<void> => {
-		clearRefreshTimer();
-
 		try {
-			const currentRefreshToken = await getStorageItemAsync(
-				STORAGE_KEYS.REFRESH_TOKEN,
-			);
-			if (currentRefreshToken) {
-				await authApi.logout(currentRefreshToken);
-			}
-		} catch (error) {
-			console.error("Backend logout failed:", error);
+			await GoogleOneTapSignIn.signOut();
+		} catch (e) {
+			console.error("Google sign-out failed:", e);
 		}
 
 		await clearAuthStorage();
-
-		setAccessToken(null);
-		setRefreshToken(null);
+		setSession(null);
 		setUser(null);
-	}, [clearRefreshTimer, setAccessToken, setRefreshToken]);
+	}, []);
 
-	// Set up auth failure callback
+	// Register the auth failure callback used by the API client (401 fallback)
 	useEffect(() => {
 		setAuthFailureCallback(() => {
-			clearRefreshTimer();
-			setAccessToken(null);
-			setRefreshToken(null);
+			setSession(null);
 			setUser(null);
 		});
 
 		return () => {
 			setAuthFailureCallback(() => {});
 		};
-	}, [clearRefreshTimer, setAccessToken, setRefreshToken]);
-
-	// Set up proactive refresh when access token changes
-	useEffect(() => {
-		if (accessToken && !isTokenExpired(accessToken)) {
-			scheduleTokenRefresh(accessToken);
-		}
-
-		return () => {
-			clearRefreshTimer();
-		};
-	}, [accessToken, scheduleTokenRefresh, clearRefreshTimer]);
-
-	// Cleanup on unmount
-	useEffect(() => {
-		return () => {
-			clearRefreshTimer();
-		};
-	}, [clearRefreshTimer]);
+	}, []);
 
 	const value = useMemo<AuthContextType>(
 		() => ({
-			session: accessToken,
+			session,
 			user,
 			isLoading,
 			signIn,
-			signUp,
 			signOut,
 		}),
-		[accessToken, user, isLoading, signIn, signUp, signOut],
+		[session, user, isLoading, signIn, signOut],
 	);
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

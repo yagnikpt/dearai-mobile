@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import { Link, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 // import { StatusBar } from "expo-status-bar";
 import { Button } from "heroui-native/button";
 import { Text, View } from "react-native";
@@ -11,7 +11,7 @@ export default function App() {
 		<View className="flex-1 bg-background">
 			<Image
 				contentFit="cover"
-				source={require("../../assets/images/onboarding_1.jpeg")}
+				source={require("@/assets/images/onboarding_1.jpeg")}
 				contentPosition={"bottom center"}
 				style={{
 					width: "100%",
@@ -29,7 +29,7 @@ export default function App() {
 					and help you find your daily calm.
 				</Text>
 				<Button
-					onPress={() => router.navigate("/(auth)/signup")}
+					onPress={() => router.navigate("/(auth)/signin")}
 					className="mt-8"
 					size="lg"
 				>
@@ -37,12 +37,6 @@ export default function App() {
 						Get Started
 					</Text>
 				</Button>
-				<Link
-					className="text-center text-base font-sans text-neutral-700 mt-4 underline"
-					href="/(auth)/signin"
-				>
-					Sign in instead
-				</Link>
 			</View>
 			{/*<StatusBar style="light" />*/}
 		</View>

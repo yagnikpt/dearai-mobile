@@ -1,131 +1,104 @@
-import { AxiosError } from "axios";
 import { Image } from "expo-image";
-import { Link } from "expo-router";
-import { Alert } from "heroui-native/alert";
 import { Button } from "heroui-native/button";
-import { Input } from "heroui-native/input";
+import { Spinner } from "heroui-native/spinner";
 import { useState } from "react";
-import { ActivityIndicator, Alert as RNAlert, Text, View } from "react-native";
-import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { Text, View } from "react-native";
+import { isErrorWithCode, statusCodes } from "react-native-nitro-google-signin";
+import { LinearTransition } from "react-native-reanimated";
 import { useAuth } from "@/context/AuthContext";
 
 export default function SignInScreen() {
 	const { signIn } = useAuth();
-	const [email, setEmail] = useState("");
-	const [password, setPassword] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
 	const handleSignIn = async () => {
-		if (!email.trim() || !password.trim()) {
-			RNAlert.alert("Error", "Please enter email and password");
-			return;
-		}
-
 		setIsLoading(true);
+		setErrorMsg(null);
+
 		try {
-			await signIn(email.trim(), password);
-			setErrorMsg(null);
+			await signIn();
 		} catch (error) {
-			let message = "An unexpected error occurred";
-
-			if (error instanceof AxiosError) {
-				if (error.response?.status === 401) {
-					message = "Invalid email or password";
-				} else if (error.response?.data?.detail) {
-					message =
-						typeof error.response.data.detail === "string"
-							? error.response.data.detail
-							: "Invalid credentials";
-				} else if (error.message) {
-					message = error.message;
-				} else {
-					console.error("Sign in error:", error);
+			if (isErrorWithCode(error)) {
+				switch (error.code) {
+					case statusCodes.SIGN_IN_CANCELLED:
+						// User dismissed — not an error
+						break;
+					case statusCodes.IN_PROGRESS:
+						setErrorMsg("Sign-in already in progress.");
+						break;
+					case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
+						setErrorMsg("Google Play Services is not available.");
+						break;
+					default:
+						setErrorMsg("Something went wrong. Please try again.");
+						console.error("Google Sign-In error:", error);
 				}
+			} else {
+				setErrorMsg("Something went wrong. Please try again.");
+				console.error("Sign-in error:", error);
 			}
-
-			setErrorMsg(message);
 		} finally {
 			setIsLoading(false);
 		}
 	};
 
 	return (
-		<KeyboardAvoidingView
-			contentContainerStyle={{ flex: 1 }}
-			className="flex-1 bg-background"
-			behavior="position"
-		>
-			{/*<SafeAreaView style={{ flex: 1 }}>*/}
+		<View className="flex-1 bg-background">
 			<Image
 				contentFit="cover"
-				source={require("../../assets/images/onboarding.jpeg")}
+				source={require("@/assets/images/onboarding.jpeg")}
 				contentPosition={{ top: "20%" }}
 				style={{
 					width: "100%",
-					height: "40%",
+					height: "50%",
 					borderBottomLeftRadius: 32,
 					borderBottomRightRadius: 32,
 				}}
 			/>
-			<View className="flex-1 p-10 justify-center">
-				<Text className="text-4xl text-center font-serif text-neutral-700">
-					Welcome Back
-				</Text>
-				<Text className="font-sans text-lg text-muted font-semibold text-center mt-4">
-					Take a deep breath and step inside.
-				</Text>
-				<View className="gap-2 mt-4">
-					<Input
-						value={email}
-						onChangeText={setEmail}
-						autoCorrect={false}
-						editable={!isLoading}
-						placeholder={"Email"}
-						keyboardType={"email-address"}
-						variant="secondary"
-					/>
-					<Input
-						value={password}
-						onChangeText={setPassword}
-						autoCorrect={false}
-						editable={!isLoading}
-						placeholder={"Password"}
-						secureTextEntry
-						variant="secondary"
-					/>
+
+			<View className="flex-1 px-10 items-center gap-6 py-20">
+				<View className="items-center gap-2">
+					<Text className="text-4xl text-center font-serif text-neutral-700">
+						Welcome
+					</Text>
+					<Text className="font-sans text-base text-muted font-semibold text-center">
+						Take a deep breath and step inside.
+					</Text>
 				</View>
+
 				{errorMsg ? (
-					<Alert status="danger" className="rounded-2xl mt-2">
-						<Alert.Indicator />
-						<Alert.Content>
-							<Alert.Title>{errorMsg}</Alert.Title>
-						</Alert.Content>
-					</Alert>
+					<Text className="text-sm text-danger text-center font-sans">
+						{errorMsg}
+					</Text>
 				) : null}
+
 				<Button
-					onPress={handleSignIn}
+					isIconOnly={isLoading}
+					layout={LinearTransition.springify()}
 					isDisabled={isLoading}
-					className="mt-8"
-					size="lg"
+					variant="secondary"
+					className="self-center"
+					onPress={handleSignIn}
 				>
 					{isLoading ? (
-						<ActivityIndicator color={"#ddd"} size={24} />
+						<Spinner />
 					) : (
-						<Text className="font-sans-semibold text-lg text-accent-foreground">
-							Sign In
-						</Text>
+						<>
+							<Image
+								source={require("@/assets/icons/google.svg")}
+								style={{
+									width: 24,
+									height: 24,
+								}}
+							/>
+							<Button.Label className="text-accent-soft-foreground font-sans-medium">
+								Sign in with Google
+							</Button.Label>
+						</>
 					)}
 				</Button>
-				<Text className="text-center text-base font-sans text-neutral-700 mt-4">
-					Don&apos;t have an account?{" "}
-					<Link className="underline" href="/(auth)/signup">
-						Sign up
-					</Link>
-				</Text>
 			</View>
-			{/*</SafeAreaView>*/}
-			{/*<StatusBar style="light" />*/}
-		</KeyboardAvoidingView>
+		</View>
 	);
 }

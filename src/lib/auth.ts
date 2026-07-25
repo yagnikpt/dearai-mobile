@@ -2,13 +2,8 @@ import { STORAGE_KEYS } from "./constants";
 import { getStorageItemAsync, setStorageItemAsync } from "./storage";
 import type { StoredUser } from "./types/auth";
 
-// Re-export commonly used items for convenience
+// Re-export for convenience
 export { STORAGE_KEYS } from "./constants";
-export {
-	decodeJWT,
-	getTokenExpirationTime,
-	isTokenExpired,
-} from "./jwt";
 export {
 	getStorageItemAsync,
 	setStorageItemAsync,
@@ -46,8 +41,7 @@ export async function getUserData(): Promise<StoredUser | null> {
  */
 export async function clearAuthStorage(): Promise<void> {
 	await Promise.all([
-		setStorageItemAsync(STORAGE_KEYS.ACCESS_TOKEN, null),
-		setStorageItemAsync(STORAGE_KEYS.REFRESH_TOKEN, null),
+		setStorageItemAsync(STORAGE_KEYS.ID_TOKEN, null),
 		setStorageItemAsync(STORAGE_KEYS.USER_DATA, null),
 	]);
 }

@@ -46,4 +46,6 @@ app-example
 .vscode
 .zed
 .agents
+.agent
 .opencode
+google-services.json

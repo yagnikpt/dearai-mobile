@@ -7,11 +7,16 @@ import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
+import { GoogleOneTapSignIn } from "react-native-nitro-google-signin";
 import { Uniwind } from "uniwind";
 import { AuthProvider, useSession } from "@/context/AuthContext";
 
 SplashScreen.preventAutoHideAsync();
 Uniwind.setTheme("light");
+
+GoogleOneTapSignIn.configure({
+	webClientId: "autoDetect",
+});
 
 function RootLayoutNav() {
 	const { session, isLoading } = useSession();

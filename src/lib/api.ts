@@ -4,6 +4,10 @@ import axios, {
 	type InternalAxiosRequestConfig,
 } from "axios";
 import Constants from "expo-constants";
+import {
+	GoogleOneTapSignIn,
+	isSuccessResponse,
+} from "react-native-nitro-google-signin";
 
 import {
 	clearAuthStorage,
@@ -11,25 +15,6 @@ import {
 	STORAGE_KEYS,
 	setStorageItemAsync,
 } from "./auth";
-import { PUBLIC_ENDPOINTS, TOKEN_REFRESH_BUFFER_SECONDS } from "./constants";
-import { isTokenExpired } from "./jwt";
-import type {
-	LoginRequest,
-	LogoutResponse,
-	RegisterRequest,
-	TokenResponse,
-	UserResponse,
-} from "./types/auth";
-
-// Re-export types for convenience
-export type {
-	LoginRequest,
-	LogoutRequest,
-	LogoutResponse,
-	RegisterRequest,
-	TokenResponse,
-	UserResponse,
-} from "./types/auth";
 
 // API Base URL Configuration
 function getApiBaseUrl(): string {
@@ -51,96 +36,31 @@ function getApiBaseUrl(): string {
 
 export const API_BASE_URL = getApiBaseUrl();
 
-// Token refresh queue management
-interface QueueItem {
-	resolve: (value: string | null) => void;
-	reject: (error: Error) => void;
-}
-
-let isRefreshing = false;
-let failedQueue: QueueItem[] = [];
-
-const processQueue = (error: Error | null, token: string | null = null) => {
-	failedQueue.forEach((item) => {
-		if (error) {
-			item.reject(error);
-		} else {
-			item.resolve(token);
-		}
-	});
-	failedQueue = [];
-};
-
-// Auth failure callback
+// Auth failure callback — called when a 401 can't be recovered
 let onAuthFailure: (() => void) | null = null;
 
 export function setAuthFailureCallback(callback: () => void) {
 	onAuthFailure = callback;
 }
 
+// Track if a silent refresh is in progress to avoid concurrent retries
+let isRefreshingToken = false;
+
 /**
- * Refresh the access token using the refresh token
+ * Attempt a silent Google sign-in to get a fresh idToken.
+ * Returns the new token on success, null otherwise.
  */
-async function refreshAccessToken(): Promise<string | null> {
+async function silentlyRefreshIdToken(): Promise<string | null> {
 	try {
-		const refreshToken = await getStorageItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
-		if (!refreshToken) {
-			return null;
+		const response = await GoogleOneTapSignIn.signIn();
+		if (isSuccessResponse(response) && response.data?.idToken) {
+			await setStorageItemAsync(STORAGE_KEYS.ID_TOKEN, response.data.idToken);
+			return response.data.idToken;
 		}
-
-		// Use a fresh axios instance to avoid interceptor loops
-		const response = await axios.post<TokenResponse>(
-			`${API_BASE_URL}/auth/refresh`,
-			{
-				refresh_token: refreshToken,
-			},
-		);
-
-		const { access_token, refresh_token: newRefreshToken } = response.data;
-
-		// Store the new tokens (refresh token rotation)
-		await Promise.all([
-			setStorageItemAsync(STORAGE_KEYS.ACCESS_TOKEN, access_token),
-			setStorageItemAsync(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken),
-		]);
-
-		return access_token;
-	} catch (error) {
-		console.error("Failed to refresh token:", error);
+		return null;
+	} catch {
 		return null;
 	}
-}
-
-/**
- * Handle token refresh with queue management
- */
-async function handleTokenRefresh(): Promise<string | null> {
-	if (!isRefreshing) {
-		isRefreshing = true;
-		try {
-			const token = await refreshAccessToken();
-			processQueue(null, token);
-			return token;
-		} catch (error) {
-			processQueue(error as Error, null);
-			throw error;
-		} finally {
-			isRefreshing = false;
-		}
-	}
-
-	// Wait for ongoing refresh
-	return new Promise<string | null>((resolve, reject) => {
-		failedQueue.push({ resolve, reject });
-	});
-}
-
-/**
- * Check if URL is a public endpoint
- */
-function isPublicEndpoint(url: string | undefined): boolean {
-	if (!url) return false;
-	return PUBLIC_ENDPOINTS.some((endpoint) => url.includes(endpoint));
 }
 
 /**
@@ -154,34 +74,19 @@ function createApiClient(): AxiosInstance {
 		},
 	});
 
-	// Request interceptor - attach access token and proactively refresh if needed
+	// Request interceptor — attach idToken as Bearer
 	api.interceptors.request.use(
 		async (config: InternalAxiosRequestConfig) => {
-			if (isPublicEndpoint(config.url)) {
-				return config;
+			const idToken = await getStorageItemAsync(STORAGE_KEYS.ID_TOKEN);
+			if (idToken) {
+				config.headers.Authorization = `Bearer ${idToken}`;
 			}
-
-			let accessToken = await getStorageItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
-
-			// Proactively refresh if token is about to expire
-			if (
-				accessToken &&
-				isTokenExpired(accessToken, TOKEN_REFRESH_BUFFER_SECONDS)
-			) {
-				console.log("Token about to expire, refreshing proactively...");
-				accessToken = await handleTokenRefresh();
-			}
-
-			if (accessToken) {
-				config.headers.Authorization = `Bearer ${accessToken}`;
-			}
-
 			return config;
 		},
 		(error) => Promise.reject(error),
 	);
 
-	// Response interceptor - handle 401 errors
+	// Response interceptor — on 401, attempt one silent token refresh then retry
 	api.interceptors.response.use(
 		(response) => response,
 		async (error: AxiosError) => {
@@ -189,27 +94,25 @@ function createApiClient(): AxiosInstance {
 				_retry?: boolean;
 			};
 
-			// If we get a 401 and haven't retried yet
-			if (error.response?.status === 401 && !originalRequest._retry) {
-				// Skip retry for auth endpoints
-				if (originalRequest.url?.includes("/auth/")) {
-					return Promise.reject(error);
-				}
-
+			if (
+				error.response?.status === 401 &&
+				!originalRequest._retry &&
+				!isRefreshingToken
+			) {
 				originalRequest._retry = true;
+				isRefreshingToken = true;
 
 				try {
-					const newToken = await handleTokenRefresh();
-
+					const newToken = await silentlyRefreshIdToken();
 					if (newToken) {
 						originalRequest.headers.Authorization = `Bearer ${newToken}`;
 						return api(originalRequest);
 					}
-				} catch {
-					// Token refresh failed
+				} finally {
+					isRefreshingToken = false;
 				}
 
-				// Refresh failed - clear auth and notify
+				// Refresh failed — clear auth and notify the context
 				await clearAuthStorage();
 				onAuthFailure?.();
 			}
@@ -223,33 +126,3 @@ function createApiClient(): AxiosInstance {
 
 // Export the configured API client
 export const api = createApiClient();
-
-// Auth API functions
-export const authApi = {
-	health: async (): Promise<{ status: string }> => {
-		const response = await api.get<{ status: string }>("/health");
-		return response.data;
-	},
-
-	login: async (data: LoginRequest): Promise<TokenResponse> => {
-		const response = await api.post<TokenResponse>("/auth/login", data);
-		return response.data;
-	},
-
-	register: async (data: RegisterRequest): Promise<UserResponse> => {
-		const response = await api.post<UserResponse>("/auth/register", data);
-		return response.data;
-	},
-
-	logout: async (refreshToken: string): Promise<LogoutResponse> => {
-		const response = await api.post<LogoutResponse>("/auth/logout", {
-			refresh_token: refreshToken,
-		});
-		return response.data;
-	},
-
-	getMe: async (): Promise<UserResponse> => {
-		const response = await api.get<UserResponse>("/users/me");
-		return response.data;
-	},
-};

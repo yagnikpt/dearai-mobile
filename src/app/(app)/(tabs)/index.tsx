@@ -25,12 +25,19 @@ const StyledFlowerIcon = withUniwind(FlowerIcon);
 const StyledMessagesSquareIcon = withUniwind(MessagesSquareIcon);
 
 export default function Index() {
-	const { user, signOut } = useAuth();
+	// Mock auth setup
+	// const { user, signOut } = useAuth();
+	const user = { full_name: "Yagnik Patel" };
+	const signOut = async () => {};
 	const router = useRouter();
 
 	function newCompanionVoiceChat() {
 		const chatId = randomUUID();
 		router.navigate(`/companion/${chatId}?new=true`);
+	}
+
+	function breathingExercise() {
+		router.navigate("/breathing");
 	}
 
 	if (!user)
@@ -109,7 +116,12 @@ export default function Index() {
 						</Text>
 					</PressableFeedback>
 				</View>
-				<Button className="h-16 mt-4 bg-surface" variant="outline" size="lg">
+				<Button
+					onPress={breathingExercise}
+					className="h-16 mt-4 bg-surface"
+					variant="outline"
+					size="lg"
+				>
 					<StyledWindIcon size={20} className="text-foreground" />
 					<Button.Label className="font-sans text-foreground">
 						Start Breathing
