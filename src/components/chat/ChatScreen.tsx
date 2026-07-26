@@ -1,6 +1,5 @@
 import { useRouter } from "expo-router";
 import { Button } from "heroui-native/button";
-import { Input } from "heroui-native/input";
 import {
 	ArrowLeftIcon,
 	ArrowUpIcon,
@@ -11,12 +10,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	ActivityIndicator,
 	FlatList,
-	KeyboardAvoidingView,
-	Platform,
 	Pressable,
 	Text,
+	TextInput,
 	View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { withUniwind } from "uniwind";
 import { useAuth } from "@/context/AuthContext";
@@ -53,13 +53,17 @@ function createLocalId() {
 
 export function ChatScreen({
 	initialSessionId,
+	initialQuery,
+	chatTitle,
 }: {
 	initialSessionId?: string;
+	initialQuery?: string;
+	chatTitle?: string;
 }) {
 	const router = useRouter();
 	const { session } = useAuth();
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
-	const [draft, setDraft] = useState("");
+	const [draft, setDraft] = useState(initialQuery ?? "");
 	const [isLoadingHistory, setIsLoadingHistory] = useState(
 		Boolean(initialSessionId),
 	);
@@ -199,7 +203,7 @@ export function ChatScreen({
 					<Text
 						className={
 							item.role === "user"
-								? "font-sans text-white leading-6"
+								? "font-sans text-accent-foreground leading-6"
 								: "font-sans text-foreground leading-6"
 						}
 					>
@@ -212,11 +216,8 @@ export function ChatScreen({
 	);
 
 	return (
-		<StyledSafeAreaView
-			className="flex-1 bg-background"
-			edges={["top", "bottom"]}
-		>
-			<View className="px-5 py-3 flex-row items-center border-b border-border">
+		<StyledSafeAreaView className="flex-1 bg-background">
+			<View className="px-5 py-3 flex-row gap-2 items-center border-b border-border">
 				<Pressable
 					onPress={() => router.back()}
 					hitSlop={12}
@@ -224,19 +225,14 @@ export function ChatScreen({
 				>
 					<StyledArrowLeftIcon className="text-foreground size-5" />
 				</Pressable>
-				<View className="flex-1 items-center">
-					<Text className="font-sans-medium text-base text-foreground">
-						Dear AI
-					</Text>
-					<Text className="font-sans text-xs text-muted">
-						Your private space to talk
-					</Text>
-				</View>
+				<Text className="font-sans-medium text-base text-foreground flex-1 text-center">
+					{chatTitle || "New Chat"}
+				</Text>
 				<View className="size-10" />
 			</View>
 			<KeyboardAvoidingView
 				className="flex-1"
-				behavior={Platform.OS === "ios" ? "padding" : undefined}
+				behavior={"padding"}
 				keyboardVerticalOffset={8}
 			>
 				{isLoadingHistory ? (
@@ -279,22 +275,51 @@ export function ChatScreen({
 					</View>
 				)}
 				<View className="border-t border-border px-5 pt-3 pb-2 flex-row items-end gap-3 bg-background">
-					<Input
-						className="flex-1 px-4 border border-border"
+					<TextInput
+						className="flex-1 h-12 px-4 bg-surface shadow border border-border rounded-full"
 						multiline
 						placeholder="Write what's on your mind..."
 						value={draft}
 						onChangeText={setDraft}
 						submitBehavior="newline"
+						autoFocus={!!initialQuery || !initialSessionId}
 					/>
-					<Button
-						isIconOnly
-						onPress={sendMessage}
-						isDisabled={!draft.trim() || isConnecting || isResponding}
-						className={`size-12 rounded-full ${!draft.trim() || isConnecting || isResponding ? "bg-muted/50" : "bg-accent"}`}
-					>
-						<StyledArrowUpIcon className="text-accent-foreground size-5" />
-					</Button>
+					{!draft.trim() ? (
+						<Animated.View key="mic">
+							<Button
+								entering={FadeInDown.springify().damping(400).mass(2)}
+								exiting={FadeOutDown.springify().damping(400).mass(2)}
+								isIconOnly
+								onPress={() => {
+									if (initialSessionId) {
+										router.push({
+											pathname: "/voice/[id]",
+											params: { id: initialSessionId },
+										});
+									} else {
+										router.push("/voice/new");
+									}
+								}}
+								isDisabled={isConnecting || isResponding}
+								className={`size-12 rounded-full ${isConnecting || isResponding ? "bg-muted/50" : "bg-accent"}`}
+							>
+								<StyledAudioLines className="text-accent-foreground size-5" />
+							</Button>
+						</Animated.View>
+					) : (
+						<Animated.View key="send">
+							<Button
+								entering={FadeInDown.springify().damping(400).mass(2)}
+								exiting={FadeOutDown.springify().damping(400).mass(2)}
+								isIconOnly
+								onPress={sendMessage}
+								isDisabled={isConnecting || isResponding}
+								className={`size-12 rounded-full ${!draft.trim() || isConnecting || isResponding ? "bg-muted/50" : "bg-accent"}`}
+							>
+								<StyledArrowUpIcon className="text-accent-foreground size-5" />
+							</Button>
+						</Animated.View>
+					)}
 				</View>
 			</KeyboardAvoidingView>
 		</StyledSafeAreaView>

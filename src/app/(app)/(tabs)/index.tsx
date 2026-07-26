@@ -17,7 +17,7 @@ export default function Index() {
 	const { user } = useAuth();
 	const router = useRouter();
 
-	const fgColor = useCSSVariable("--color-foreground");
+	const fgColor = useCSSVariable("--color-accent");
 
 	if (!user)
 		return (
@@ -36,7 +36,7 @@ export default function Index() {
 				<Text className="text-3xl font-sans-medium text-accent">
 					{firstName}
 				</Text>
-				<Text className="mt-2 text-muted">{date}</Text>
+				<Text className="mt-2 text-muted font-sans">{date}</Text>
 			</View>
 
 			<View className="flex-1 py-4 px-6">
@@ -62,7 +62,15 @@ export default function Index() {
 					How can I help you today?
 				</Text>
 				<View className="flex-row gap-4 mt-4">
-					<PressableFeedback className="gap-y-8 p-4 bg-surface/70 shadow-sm border border-border rounded-2xl flex-1">
+					<PressableFeedback
+						onPress={() =>
+							router.push({
+								pathname: "/chat/new",
+								params: { initial: "I need to vent, " },
+							})
+						}
+						className="gap-y-8 p-4 bg-surface/70 shadow-sm border border-border rounded-2xl flex-1"
+					>
 						<SymbolView
 							tintColor={fgColor?.toString()}
 							name={{ ios: "air.purifier", android: "air" }}
@@ -70,7 +78,15 @@ export default function Index() {
 						/>
 						<Text className="font-sans text-lg">I need to vent</Text>
 					</PressableFeedback>
-					<PressableFeedback className="gap-y-8 p-4 bg-surface/70 shadow-sm border border-border rounded-2xl flex-1">
+					<PressableFeedback
+						onPress={() =>
+							router.push({
+								pathname: "/chat/new",
+								params: { initial: "Help me relax, " },
+							})
+						}
+						className="gap-y-8 p-4 bg-surface/70 shadow-sm border border-border rounded-2xl flex-1"
+					>
 						<SymbolView
 							tintColor={fgColor?.toString()}
 							name={{ ios: "air.purifier", android: "self_improvement" }}
@@ -80,7 +96,15 @@ export default function Index() {
 					</PressableFeedback>
 				</View>
 				<View className="flex-row gap-4 mt-4">
-					<PressableFeedback className="gap-y-8 p-4 bg-surface/70 shadow-sm border border-border rounded-2xl flex-1">
+					<PressableFeedback
+						onPress={() =>
+							router.push({
+								pathname: "/chat/new",
+								params: { initial: "I can't sleep, " },
+							})
+						}
+						className="gap-y-8 p-4 bg-surface/70 shadow-sm border border-border rounded-2xl flex-1"
+					>
 						<SymbolView
 							tintColor={fgColor?.toString()}
 							name={{ ios: "air.purifier", android: "bedtime" }}
@@ -88,7 +112,15 @@ export default function Index() {
 						/>
 						<Text className="font-sans text-lg">I can&apos;t sleep</Text>
 					</PressableFeedback>
-					<PressableFeedback className="gap-y-8 p-4 bg-surface/70 shadow-sm border border-border rounded-2xl flex-1">
+					<PressableFeedback
+						onPress={() =>
+							router.push({
+								pathname: "/chat/new",
+								params: { initial: "Just feeling off, " },
+							})
+						}
+						className="gap-y-8 p-4 bg-surface/70 shadow-sm border border-border rounded-2xl flex-1"
+					>
 						<SymbolView
 							tintColor={fgColor?.toString()}
 							name={{ ios: "air.purifier", android: "mindfulness" }}
@@ -109,7 +141,7 @@ export default function Index() {
 					<SymbolView
 						name={{ ios: "mic", android: "mic", web: "mic" }}
 						tintColor={fgColor?.toString()}
-						size={20}
+						size={24}
 					/>
 				</Button>
 			</View>

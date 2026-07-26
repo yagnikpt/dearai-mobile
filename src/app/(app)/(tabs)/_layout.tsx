@@ -12,6 +12,10 @@ export default function TabLayout() {
 					md={{ default: "home", selected: "home_filled" }}
 				/>
 			</NativeTabs.Trigger>
+			<NativeTabs.Trigger name="chats">
+				<NativeTabs.Trigger.Label>Conversations</NativeTabs.Trigger.Label>
+				<NativeTabs.Trigger.Icon md="chat" />
+			</NativeTabs.Trigger>
 			<NativeTabs.Trigger name="breathing">
 				<NativeTabs.Trigger.Label>Breathe</NativeTabs.Trigger.Label>
 				<NativeTabs.Trigger.Icon md="airwave" />
