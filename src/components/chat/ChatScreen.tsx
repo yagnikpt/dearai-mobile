@@ -145,8 +145,8 @@ export function ChatScreen({
 		if (!initialSessionId) return;
 		let cancelled = false;
 		api
-			.get<HistoryMessage[]>("/api/chat/chats", {
-				params: { session_id: initialSessionId, limit: 100 },
+			.get<HistoryMessage[]>(`/api/chats/${initialSessionId}`, {
+				params: { limit: 100 },
 			})
 			.then((response) => {
 				if (!cancelled)
@@ -285,16 +285,18 @@ export function ChatScreen({
 						autoFocus={!!initialQuery || !initialSessionId}
 					/>
 					{!draft.trim() ? (
-						<Animated.View key="mic">
+						<Animated.View
+							entering={FadeInDown.springify().damping(400).mass(2)}
+							exiting={FadeOutDown.springify().damping(400).mass(2)}
+							key="mic"
+						>
 							<Button
-								entering={FadeInDown.springify().damping(400).mass(2)}
-								exiting={FadeOutDown.springify().damping(400).mass(2)}
 								isIconOnly
 								onPress={() => {
 									if (initialSessionId) {
 										router.push({
 											pathname: "/voice/[id]",
-											params: { id: initialSessionId },
+											params: { id: initialSessionId, chatTitle },
 										});
 									} else {
 										router.push("/voice/new");
@@ -307,10 +309,12 @@ export function ChatScreen({
 							</Button>
 						</Animated.View>
 					) : (
-						<Animated.View key="send">
+						<Animated.View
+							entering={FadeInDown.springify().damping(400).mass(2)}
+							exiting={FadeOutDown.springify().damping(400).mass(2)}
+							key="send"
+						>
 							<Button
-								entering={FadeInDown.springify().damping(400).mass(2)}
-								exiting={FadeOutDown.springify().damping(400).mass(2)}
 								isIconOnly
 								onPress={sendMessage}
 								isDisabled={isConnecting || isResponding}

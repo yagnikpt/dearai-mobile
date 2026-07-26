@@ -57,8 +57,8 @@ export function useSession() {
  * Sign a Google credential into Firebase and return the Firebase ID token.
  */
 async function firebaseSignInWithGoogle(
-	idToken: string,
-	accessToken: string,
+	idToken?: string,
+	accessToken?: string,
 ): Promise<{
 	firebaseToken: string;
 	firebaseUser: ReturnType<typeof getAuth>["currentUser"];
@@ -171,12 +171,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			return;
 		}
 
-		const { idToken, user: googleUser } = response.data;
+		const { user: googleUser } = response.data;
+		const { idToken, accessToken } = await GoogleOneTapSignIn.getTokens();
 
-		const googleCredential = GoogleAuthProvider.credential(idToken);
+		const googleCredential = GoogleAuthProvider.credential(
+			idToken,
+			accessToken,
+		);
 		const { firebaseToken } = await firebaseSignInWithGoogle(
-			googleCredential.idToken!,
-			googleCredential.accessToken!,
+			googleCredential.idToken,
+			googleCredential.accessToken,
 		);
 
 		// Persist the user profile for fast rendering on next launch.

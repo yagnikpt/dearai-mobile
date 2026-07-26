@@ -63,7 +63,7 @@ function formatUpdatedAt(dateString: string) {
 }
 
 async function getConversations() {
-	const response = await api.get<Conversation[]>("/api/chat/sessions");
+	const response = await api.get<Conversation[]>("/api/sessions");
 	return response.data;
 }
 
@@ -109,7 +109,7 @@ export default function ChatsScreen() {
 	}, []);
 
 	return (
-		<StyledSafeAreaView edges={["top"]} className="flex-1 bg-background">
+		<StyledSafeAreaView className="flex-1 bg-background">
 			<View className="flex-row items-center justify-between px-6 pt-4 pb-5">
 				<View>
 					<Text className="font-sans-medium text-3xl text-foreground">

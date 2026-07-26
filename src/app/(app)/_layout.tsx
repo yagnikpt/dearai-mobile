@@ -8,6 +8,7 @@ export default function RootLayout() {
 				<Stack.Screen name="(tabs)" />
 				<Stack.Screen name="chat/new" />
 				<Stack.Screen name="chat/[id]" />
+				<Stack.Screen name="voice/new" />
 				<Stack.Screen name="voice/[id]" />
 			</Stack>
 			<StatusBar style="dark" />

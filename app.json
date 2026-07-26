@@ -33,7 +33,12 @@
 				}
 			],
 			"expo-web-browser",
-			"expo-audio",
+			[
+				"expo-audio",
+				{
+					"microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone for voice conversations."
+				}
+			],
 			"expo-image",
 			"expo-splash-screen",
 			"expo-status-bar",
