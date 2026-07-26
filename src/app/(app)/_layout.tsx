@@ -6,8 +6,9 @@ export default function RootLayout() {
 		<>
 			<Stack screenOptions={{ headerShown: false }}>
 				<Stack.Screen name="(tabs)" />
+				<Stack.Screen name="chat/new" />
 				<Stack.Screen name="chat/[id]" />
-				{/*<Stack.Screen name="breathing/index" />*/}
+				<Stack.Screen name="voice/[id]" />
 			</Stack>
 			<StatusBar style="dark" />
 		</>

@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { Button } from "heroui-native/button";
 import { PressableFeedback } from "heroui-native/pressable-feedback";
@@ -14,6 +15,7 @@ const StyledSparklesIcon = withUniwind(SparklesIcon);
 
 export default function Index() {
 	const { user } = useAuth();
+	const router = useRouter();
 
 	const fgColor = useCSSVariable("--color-foreground");
 
@@ -84,7 +86,7 @@ export default function Index() {
 							name={{ ios: "air.purifier", android: "bedtime" }}
 							size={28}
 						/>
-						<Text className="font-sans text-lg">I can't sleep</Text>
+						<Text className="font-sans text-lg">I can&apos;t sleep</Text>
 					</PressableFeedback>
 					<PressableFeedback className="gap-y-8 p-4 bg-surface/70 shadow-sm border border-border rounded-2xl flex-1">
 						<SymbolView
@@ -96,6 +98,7 @@ export default function Index() {
 					</PressableFeedback>
 				</View>
 				<Button
+					onPress={() => router.push("/chat/new")}
 					className="h-16 bg-surface justify-between px-8 mt-auto"
 					variant="outline"
 					size="lg"

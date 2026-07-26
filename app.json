@@ -14,7 +14,8 @@
 				"android.permission.FOREGROUND_SERVICE",
 				"android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
 			],
-			"package": "com.oniondevs.dearai"
+			"package": "com.oniondevs.dearai",
+			"googleServicesFile": "./google-services.json"
 		},
 		"plugins": [
 			"expo-router",
@@ -42,7 +43,9 @@
 				{
 					"androidGoogleServicesFile": "./google-services.json"
 				}
-			]
+			],
+			"@react-native-firebase/app",
+			"@react-native-firebase/auth"
 		],
 		"experiments": {
 			"typedRoutes": true,

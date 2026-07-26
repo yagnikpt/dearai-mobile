@@ -4,22 +4,15 @@ import axios, {
 	type InternalAxiosRequestConfig,
 } from "axios";
 import Constants from "expo-constants";
-import {
-	GoogleOneTapSignIn,
-	isSuccessResponse,
-} from "react-native-nitro-google-signin";
 
-import {
-	clearAuthStorage,
-	getStorageItemAsync,
-	STORAGE_KEYS,
-	setStorageItemAsync,
-} from "./auth";
+import { getStorageItemAsync, STORAGE_KEYS } from "./auth";
 
 // API Base URL Configuration
 function getApiBaseUrl(): string {
-	if (process.env.EXPO_PUBLIC_API_URL) {
-		return `https://${process.env.EXPO_PUBLIC_API_HOST_URL}`;
+	const configuredHost = process.env.EXPO_PUBLIC_API_HOST_URL;
+	if (configuredHost) {
+		const protocol = configuredHost.startsWith("http") ? "" : "https://";
+		return `${protocol}${configuredHost}`.replace(/\/$/, "");
 	}
 
 	const expoUrl = Constants.expoConfig?.hostUri || Constants.experienceUrl;
@@ -34,39 +27,31 @@ function getApiBaseUrl(): string {
 	return "http://localhost:8000";
 }
 
-function getWebsocketUrl(): string {
-	return `wss://${process.env.EXPO_PUBLIC_API_HOST_URL}`;
+function getWebsocketBaseUrl(): string {
+	return API_BASE_URL.replace(/^http/, "ws");
 }
 
 export const API_BASE_URL = getApiBaseUrl();
-export const WEBSOCKET_URL = getWebsocketUrl();
+export const WEBSOCKET_BASE_URL = getWebsocketBaseUrl();
 
-// Auth failure callback — called when a 401 can't be recovered
-let onAuthFailure: (() => void) | null = null;
+/** Builds the authenticated URL required by the streaming chat endpoint. */
+export function createChatWebSocketUrl(idToken: string): string {
+	const url = new URL("/chat", `${WEBSOCKET_BASE_URL}/`);
+	url.searchParams.set("token", idToken);
+	return url.toString();
+}
 
-export function setAuthFailureCallback(callback: () => void) {
+// Auth failure callback — called when a 401 can't be recovered.
+// AuthContext registers a handler here that force-refreshes the Firebase
+// token and updates SecureStore, so a retry can use the new token.
+let onAuthFailure: (() => void | Promise<void>) | null = null;
+
+export function setAuthFailureCallback(callback: () => void | Promise<void>) {
 	onAuthFailure = callback;
 }
 
-// Track if a silent refresh is in progress to avoid concurrent retries
+// Guard against concurrent 401 retries across parallel requests.
 let isRefreshingToken = false;
-
-/**
- * Attempt a silent Google sign-in to get a fresh idToken.
- * Returns the new token on success, null otherwise.
- */
-async function silentlyRefreshIdToken(): Promise<string | null> {
-	try {
-		const response = await GoogleOneTapSignIn.signIn();
-		if (isSuccessResponse(response) && response.data?.idToken) {
-			await setStorageItemAsync(STORAGE_KEYS.ID_TOKEN, response.data.idToken);
-			return response.data.idToken;
-		}
-		return null;
-	} catch {
-		return null;
-	}
-}
 
 /**
  * Create the axios instance with interceptors
@@ -91,7 +76,8 @@ function createApiClient(): AxiosInstance {
 		(error) => Promise.reject(error),
 	);
 
-	// Response interceptor — on 401, attempt one silent token refresh then retry
+	// Response interceptor — on 401, ask AuthContext to force-refresh the
+	// Firebase token, then retry the original request once with the new token.
 	api.interceptors.response.use(
 		(response) => response,
 		async (error: AxiosError) => {
@@ -108,18 +94,18 @@ function createApiClient(): AxiosInstance {
 				isRefreshingToken = true;
 
 				try {
-					const newToken = await silentlyRefreshIdToken();
-					if (newToken) {
-						originalRequest.headers.Authorization = `Bearer ${newToken}`;
+					// AuthContext's callback force-refreshes the Firebase token
+					// and writes the new value to SecureStore.
+					await onAuthFailure?.();
+
+					const freshToken = await getStorageItemAsync(STORAGE_KEYS.ID_TOKEN);
+					if (freshToken) {
+						originalRequest.headers.Authorization = `Bearer ${freshToken}`;
 						return api(originalRequest);
 					}
 				} finally {
 					isRefreshingToken = false;
 				}
-
-				// Refresh failed — clear auth and notify the context
-				await clearAuthStorage();
-				onAuthFailure?.();
 			}
 
 			return Promise.reject(error);
