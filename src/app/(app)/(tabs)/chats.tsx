@@ -1,13 +1,16 @@
 import { useRouter } from "expo-router";
+import { BottomSheet } from "heroui-native/bottom-sheet";
 import {
 	ChevronRightIcon,
 	MessageCircleIcon,
 	PlusIcon,
 	RefreshCwIcon,
+	Trash2Icon,
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
 	ActivityIndicator,
+	Alert,
 	FlatList,
 	Pressable,
 	RefreshControl,
@@ -23,6 +26,7 @@ const StyledChevronRightIcon = withUniwind(ChevronRightIcon);
 const StyledMessageCircleIcon = withUniwind(MessageCircleIcon);
 const StyledPlusIcon = withUniwind(PlusIcon);
 const StyledRefreshCwIcon = withUniwind(RefreshCwIcon);
+const StyledTrash2Icon = withUniwind(Trash2Icon);
 
 type Conversation = {
 	created_at: string;
@@ -73,6 +77,10 @@ export default function ChatsScreen() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [selectedConversation, setSelectedConversation] =
+		useState<Conversation | null>(null);
+	const [isActionSheetOpen, setIsActionSheetOpen] = useState(false);
+	const [isDeleting, setIsDeleting] = useState(false);
 
 	const loadConversations = async (refresh = false) => {
 		if (refresh) setIsRefreshing(true);
@@ -108,7 +116,35 @@ export default function ChatsScreen() {
 		};
 	}, []);
 
+	const deleteConversation = async () => {
+		if (!selectedConversation) return;
+
+		setIsDeleting(true);
+		try {
+			await api.delete(`/api/sessions/${selectedConversation.id}`);
+			setConversations((current) =>
+				current.filter((conversation) => conversation.id !== selectedConversation.id),
+			);
+			setIsActionSheetOpen(false);
+			setSelectedConversation(null);
+		} catch {
+			Alert.alert(
+				"Unable to delete conversation",
+				"Please check your connection and try again.",
+			);
+		} finally {
+			setIsDeleting(false);
+		}
+	};
+
 	return (
+		<BottomSheet
+			isOpen={isActionSheetOpen}
+			onOpenChange={(isOpen) => {
+				setIsActionSheetOpen(isOpen);
+				if (!isOpen && !isDeleting) setSelectedConversation(null);
+			}}
+		>
 		<StyledSafeAreaView className="flex-1 bg-background">
 			<View className="flex-row items-center justify-between px-6 pt-4 pb-5">
 				<View>
@@ -160,7 +196,7 @@ export default function ChatsScreen() {
 							onRefresh={() => loadConversations(true)}
 						/>
 					}
-					renderItem={({ item }) => (
+						renderItem={({ item }) => (
 						<Pressable
 							onPress={() =>
 								router.push({
@@ -168,6 +204,10 @@ export default function ChatsScreen() {
 									params: { id: item.id, chatTitle: item.title },
 								})
 							}
+							onLongPress={() => {
+								setSelectedConversation(item);
+								setIsActionSheetOpen(true);
+							}}
 							accessibilityRole="button"
 							accessibilityLabel={`Open conversation: ${item.title}`}
 							className="mb-3 flex-row items-center rounded-2xl border border-border bg-surface px-4 py-4"
@@ -205,5 +245,45 @@ export default function ChatsScreen() {
 				/>
 			)}
 		</StyledSafeAreaView>
+		<BottomSheet.Portal>
+			<BottomSheet.Overlay />
+			<BottomSheet.Content>
+				<View className="px-5 pb-7 pt-2">
+					<BottomSheet.Title className="font-sans-medium text-lg text-foreground">
+						Conversation options
+					</BottomSheet.Title>
+					<BottomSheet.Description className="mt-1 font-sans text-sm text-muted">
+						{selectedConversation?.title || "Untitled conversation"}
+					</BottomSheet.Description>
+					<Pressable
+						onPress={() =>
+							Alert.alert(
+								"Delete conversation?",
+								"This will permanently remove this conversation and its messages.",
+								[
+									{ text: "Cancel", style: "cancel" },
+									{
+										text: "Delete",
+										style: "destructive",
+										onPress: deleteConversation,
+									},
+								],
+							)
+						}
+						disabled={isDeleting}
+						accessibilityRole="button"
+						className="mt-6 flex-row items-center justify-center gap-2 rounded-2xl bg-red-500/10 py-4 disabled:opacity-50"
+					>
+						{isDeleting ? (
+							<ActivityIndicator />
+						) : (
+							<StyledTrash2Icon className="text-red-600" size={19} />
+						)}
+						<Text className="font-sans-medium text-red-600">Delete conversation</Text>
+					</Pressable>
+				</View>
+			</BottomSheet.Content>
+		</BottomSheet.Portal>
+		</BottomSheet>
 	);
 }
