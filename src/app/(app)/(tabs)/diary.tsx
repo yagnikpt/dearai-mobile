@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
 import { Separator } from "heroui-native/separator";
+import { Spinner } from "heroui-native/spinner";
 import { useToast } from "heroui-native/toast";
 import {
 	BookHeartIcon,
@@ -13,7 +14,6 @@ import {
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
-	ActivityIndicator,
 	Pressable,
 	RefreshControl,
 	ScrollView,
@@ -245,7 +245,7 @@ export default function DiaryScreen() {
 						className="flex-1 flex-row items-center justify-center gap-2 rounded-2xl bg-accent py-3.5 disabled:opacity-50 mt-4"
 					>
 						{isSaving ? (
-							<ActivityIndicator color="#ffffff" />
+							<Spinner color="#ffffff" />
 						) : (
 							<StyledSaveIcon className="text-accent-foreground" size={18} />
 						)}
@@ -267,7 +267,7 @@ export default function DiaryScreen() {
 						className="flex-1 flex-row items-center justify-center gap-2 mt-4 rounded-2xl border border-accent bg-accent/10 py-3.5 disabled:opacity-50"
 					>
 						{isGenerating ? (
-							<ActivityIndicator />
+							<Spinner />
 						) : (
 							<StyledSparklesIcon className="text-accent" size={18} />
 						)}
@@ -297,7 +297,7 @@ export default function DiaryScreen() {
 
 				{isLoading ? (
 					<View className="items-center py-12">
-						<ActivityIndicator />
+						<Spinner size="lg" />
 					</View>
 				) : error ? (
 					<Text className="py-6 font-sans text-muted">{error}</Text>

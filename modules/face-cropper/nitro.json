@@ -1,0 +1,20 @@
+{
+  "$schema": "https://nitro.margelo.com/nitro.schema.json",
+  "cxxNamespace": ["camera", "facecropper"],
+  "ios": {
+    "iosModuleName": "VisionCameraFaceCropper"
+  },
+  "android": {
+    "androidNamespace": ["camera", "facecropper"],
+    "androidCxxLibName": "VisionCameraFaceCropper"
+  },
+  "autolinking": {
+    "FaceCropper": {
+      "android": {
+        "language": "kotlin",
+        "implementationClassName": "HybridFaceCropper"
+      }
+    }
+  },
+  "ignorePaths": ["**/node_modules"]
+}

@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "build-nitro-modules": {
+      "source": "margelo/react-native-skills",
+      "sourceType": "github",
+      "skillPath": "skills/build-nitro-modules/SKILL.md",
+      "computedHash": "9fce6b96add81fc0baf4594edd0c70c811c25ab2109d25b16f148c46c6d754b4"
+    },
+    "react-native-vision-camera": {
+      "source": "margelo/react-native-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-native-vision-camera/SKILL.md",
+      "computedHash": "7708d6cff8e1d29eac23d17676324c0dc1c70c741467f8e41098c8de3c948dc6"
+    }
+  }
+}

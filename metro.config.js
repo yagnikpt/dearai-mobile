@@ -3,7 +3,7 @@ const { withUniwindConfig } = require("uniwind/metro");
 
 const config = getDefaultConfig(__dirname);
 
-config.resolver.assetExts.push("svg", "webp");
+config.resolver.assetExts.push("svg", "webp", "pte");
 
 module.exports = withUniwindConfig(config, {
 	cssEntryFile: "./src/global.css",

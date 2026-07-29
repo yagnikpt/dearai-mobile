@@ -75,6 +75,8 @@ export function VoiceChatScreen({
 	const activeSessionIdRef = useRef(initialSessionId);
 	const responseFinishedRef = useRef(false);
 	const hasAudioResponseRef = useRef(false);
+	const retryCountRef = useRef(0);
+	const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const [isConnected, setIsConnected] = useState(false);
 	const [isRecording, setIsRecording] = useState(false);
 	const [isSending, setIsSending] = useState(false);
@@ -119,62 +121,91 @@ export function VoiceChatScreen({
 	useEffect(() => {
 		if (!session) return;
 
-		const socket = new WebSocket(createChatWebSocketUrl(session));
-		socketRef.current = socket;
+		const MAX_RETRIES = 5;
 
-		socket.onopen = () => {
-			setIsConnected(true);
-			setStatusText("Tap the mic to start talking");
-		};
+		function connect() {
+			const socket = new WebSocket(createChatWebSocketUrl(session!));
+			socketRef.current = socket;
 
-		socket.onmessage = (event) => {
-			try {
-				const message = JSON.parse(event.data) as VoiceSocketEvent;
+			socket.onopen = () => {
+				retryCountRef.current = 0;
+				setIsConnected(true);
+				setStatusText("Tap the mic to start talking");
+			};
 
-				if (message.layer === "session_id" && message.content) {
-					activeSessionIdRef.current = message.content;
-				}
-				if (message.layer === "transcript") {
-					setTranscript(message.content ?? null);
-				}
-				if (message.layer === "immediate") {
-					setStatusText(message.content ?? "Thinking...");
-				}
-				if (message.layer === "rag") {
-					appendResponseText(message.content ?? "");
-				}
-				if (message.layer === "audio" && message.audio) {
-					enqueueAudio(message.audio);
-				}
-				if (message.layer === "emergency" || message.layer === "irrelevant") {
-					appendResponseText(message.content ?? "");
-				}
-				if (message.final) {
-					responseFinishedRef.current = true;
-					setIsSending(false);
-					if (!hasAudioResponseRef.current) {
-						setStatusText("Tap the mic to continue");
+			socket.onmessage = (event) => {
+				try {
+					const message = JSON.parse(event.data) as VoiceSocketEvent;
+
+					if (message.layer === "session_id" && message.content) {
+						activeSessionIdRef.current = message.content;
 					}
+					if (message.layer === "transcript") {
+						setTranscript(message.content ?? null);
+					}
+					if (message.layer === "immediate") {
+						setStatusText(message.content ?? "Thinking...");
+					}
+					if (message.layer === "rag") {
+						appendResponseText(message.content ?? "");
+					}
+					if (message.layer === "audio" && message.audio) {
+						enqueueAudio(message.audio);
+					}
+					if (message.layer === "emergency" || message.layer === "irrelevant") {
+						appendResponseText(message.content ?? "");
+					}
+					if (message.final) {
+						responseFinishedRef.current = true;
+						setIsSending(false);
+						if (!hasAudioResponseRef.current) {
+							setStatusText("Tap the mic to continue");
+						}
+					}
+				} catch {
+					setIsSending(false);
+					setStatusText("We couldn't understand the response. Please try again.");
 				}
-			} catch {
+			};
+
+			socket.onerror = () => {
+				setIsConnected(false);
 				setIsSending(false);
-				setStatusText("We couldn't understand the response. Please try again.");
-			}
-		};
+				// Reconnect handled in onclose
+			};
 
-		socket.onerror = () => {
-			setIsConnected(false);
-			setIsSending(false);
-			setStatusText("Couldn't connect. Please go back and try again.");
-		};
+			socket.onclose = () => {
+				if (socketRef.current !== socket) return;
+				setIsConnected(false);
+				if (retryCountRef.current < MAX_RETRIES) {
+					const delay = Math.min(1000 * 2 ** retryCountRef.current, 16_000);
+					retryCountRef.current += 1;
+					setStatusText(
+						`Reconnecting... (attempt ${retryCountRef.current}/${MAX_RETRIES})`,
+					);
+					retryTimeoutRef.current = setTimeout(() => {
+						if (socketRef.current === socket || socketRef.current == null) {
+							connect();
+						}
+					}, delay);
+				} else {
+					setStatusText("Couldn't connect. Please go back and try again.");
+				}
+			};
+		}
 
-		socket.onclose = () => {
-			if (socketRef.current === socket) setIsConnected(false);
-		};
+		connect();
 
 		return () => {
-			socket.close();
-			if (socketRef.current === socket) socketRef.current = null;
+			if (retryTimeoutRef.current != null) {
+				clearTimeout(retryTimeoutRef.current);
+				retryTimeoutRef.current = null;
+			}
+			const socket = socketRef.current;
+			if (socket) {
+				socketRef.current = null; // Prevent onclose from scheduling a retry.
+				socket.close();
+			}
 		};
 	}, [appendResponseText, enqueueAudio, session]);
 
@@ -247,7 +278,7 @@ export function VoiceChatScreen({
 				JSON.stringify({
 					audio,
 					voice_mode: true,
-					voice: "en-US-Journey-F",
+					voice: "en-US-Studio-O",
 					session_id: activeSessionIdRef.current,
 				}),
 			);

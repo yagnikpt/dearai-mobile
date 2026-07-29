@@ -3,13 +3,16 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { HeroUINativeProvider } from "heroui-native/provider";
+import { Spinner } from "heroui-native/spinner";
 import { useEffect } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { GoogleOneTapSignIn } from "react-native-nitro-google-signin";
 import { Uniwind } from "uniwind";
+import { AmbientMusicProvider } from "@/context/AmbientMusicContext";
 import { AuthProvider, useSession } from "@/context/AuthContext";
+import { SettingsProvider, useSettings } from "@/context/SettingsContext";
 
 SplashScreen.preventAutoHideAsync();
 Uniwind.setTheme("light");
@@ -20,6 +23,7 @@ GoogleOneTapSignIn.configure({
 
 function RootLayoutNav() {
 	const { session, isLoading } = useSession();
+	const { isLoading: areSettingsLoading } = useSettings();
 	const [loaded, error] = useFonts({
 		"Rubik-Light": require("../assets/fonts/Rubik-Light.ttf"),
 		"Rubik-Regular": require("../assets/fonts/Rubik-Regular.ttf"),
@@ -41,10 +45,10 @@ function RootLayoutNav() {
 		return null;
 	}
 
-	if (isLoading) {
+	if (isLoading || areSettingsLoading) {
 		return (
-			<View className="flex-1 justify-center items-center">
-				<ActivityIndicator size="large" />
+			<View className="flex-1 bg-background justify-center items-center">
+				<Spinner size="lg" />
 			</View>
 		);
 	}
@@ -71,7 +75,11 @@ export default function RootLayout() {
 					config={{ devInfo: { stylingPrinciples: false } }}
 				>
 					<AuthProvider>
-						<RootLayoutNav />
+						<SettingsProvider>
+							{/*<AmbientMusicProvider>*/}
+							<RootLayoutNav />
+							{/*</AmbientMusicProvider>*/}
+						</SettingsProvider>
 					</AuthProvider>
 				</HeroUINativeProvider>
 			</KeyboardProvider>

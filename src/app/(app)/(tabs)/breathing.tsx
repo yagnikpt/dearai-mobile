@@ -254,8 +254,8 @@ export default function BreathingExperience() {
 					isRunning={status === "running"}
 				/>
 
-				<View className="bg-[#faf7f1] rounded-3xl px-4 pt-0 pb-5 shadow-sm border border-border mt-auto">
-					<View className="self-center -translate-y-1/2 bg-[#faf7f1] px-5 h-10 rounded-full border border-border flex-row items-center gap-1">
+				<View className="bg-surface rounded-3xl px-4 pt-0 pb-5 shadow-sm border border-border mt-auto">
+					<View className="self-center -translate-y-1/2 bg-surface px-5 h-10 rounded-full border border-border flex-row items-center gap-1">
 						<Text className="font-sans-medium text-base text-foreground">
 							4 - 4 - 6 Breathing
 						</Text>

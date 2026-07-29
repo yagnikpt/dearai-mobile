@@ -8,7 +8,7 @@ import { Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useCSSVariable, withUniwind } from "uniwind";
 import { useAuth } from "@/context/AuthContext";
-import { getFirstName, getTodaysDate } from "@/utils/ui-format";
+import { getFirstName, getTodaysDate, greetMessage } from "@/utils/ui-format";
 
 const StyledSafeAreaView = withUniwind(SafeAreaView);
 const StyledSparklesIcon = withUniwind(SparklesIcon);
@@ -28,11 +28,12 @@ export default function Index() {
 
 	const date = getTodaysDate();
 	const firstName = getFirstName(user.full_name);
+	const greeting = greetMessage();
 
 	return (
 		<StyledSafeAreaView edges={["top"]} className="flex-1 bg-background">
 			<View className="px-7 mt-4">
-				<Text className="text-3xl font-sans-medium">Good Morning,</Text>
+				<Text className="text-3xl font-sans-medium">{greeting},</Text>
 				<Text className="text-3xl font-sans-medium text-accent">
 					{firstName}
 				</Text>
@@ -129,21 +130,36 @@ export default function Index() {
 						<Text className="font-sans text-lg">Just feeling off</Text>
 					</PressableFeedback>
 				</View>
-				<Button
-					onPress={() => router.push("/chat/new")}
-					className="h-16 bg-surface justify-between px-8 mt-auto"
-					variant="outline"
-					size="lg"
-				>
-					<Button.Label className="font-sans text-foreground">
-						Start Chating...
-					</Button.Label>
-					<SymbolView
-						name={{ ios: "mic", android: "mic", web: "mic" }}
-						tintColor={fgColor?.toString()}
-						size={24}
-					/>
-				</Button>
+				<View className="flex-row gap-2 items-center mt-auto">
+					<Button
+						onPress={() => router.push("/voice/new")}
+						className="h-16 bg-surface px-8 flex-1"
+						variant="outline"
+						size="lg"
+					>
+						<SymbolView
+							name={{ ios: "mic", android: "mic", web: "mic" }}
+							tintColor={fgColor?.toString()}
+							size={24}
+						/>
+						<Button.Label className="font-sans text-foreground">
+							Start Chating...
+						</Button.Label>
+					</Button>
+					<Button
+						className="bg-surface size-16"
+						variant="outline"
+						size="lg"
+						isIconOnly
+						onPress={() => router.push("/chat/new")}
+					>
+						<SymbolView
+							name={{ ios: "keyboard", android: "keyboard", web: "keyboard" }}
+							tintColor={fgColor?.toString()}
+							size={24}
+						/>
+					</Button>
+				</View>
 			</View>
 		</StyledSafeAreaView>
 	);

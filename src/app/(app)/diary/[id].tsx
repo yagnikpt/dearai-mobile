@@ -1,7 +1,8 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { Spinner } from "heroui-native/spinner";
 import { ArrowLeftIcon, BookHeartIcon } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { withUniwind } from "uniwind";
 import { api } from "@/lib/api";
@@ -19,9 +20,7 @@ type DiaryEntry = {
 
 function formatEntryDate(dateString: string) {
 	const date = new Date(
-		/(?:Z|[+-]\d{2}:?\d{2})$/i.test(dateString)
-			? dateString
-			: `${dateString}Z`,
+		/(?:Z|[+-]\d{2}:?\d{2})$/i.test(dateString) ? dateString : `${dateString}Z`,
 	);
 	if (Number.isNaN(date.getTime())) return "";
 	return date.toLocaleDateString("en-US", {
@@ -52,7 +51,8 @@ export default function DiaryEntryScreen() {
 				}
 			})
 			.catch(() => {
-				if (!cancelled) setError("We couldn't load this diary entry. Please try again.");
+				if (!cancelled)
+					setError("We couldn't load this diary entry. Please try again.");
 			})
 			.finally(() => {
 				if (!cancelled) setIsLoading(false);
@@ -82,7 +82,7 @@ export default function DiaryEntryScreen() {
 
 			{isLoading ? (
 				<View className="flex-1 items-center justify-center">
-					<ActivityIndicator />
+					<Spinner size="lg" />
 				</View>
 			) : error || !entry ? (
 				<View className="flex-1 items-center justify-center px-8">

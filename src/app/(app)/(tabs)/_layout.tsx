@@ -5,11 +5,7 @@ export default function TabLayout() {
 	const accentColor = useCSSVariable("--color-accent");
 
 	return (
-		<NativeTabs
-			tintColor={accentColor?.toString()}
-			rippleColor={"none"}
-			// labelVisibilityMode="labeled"
-		>
+		<NativeTabs tintColor={accentColor?.toString()} rippleColor={"none"}>
 			<NativeTabs.Trigger name="index">
 				<NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
 				<NativeTabs.Trigger.Icon
@@ -27,6 +23,10 @@ export default function TabLayout() {
 			<NativeTabs.Trigger name="diary">
 				<NativeTabs.Trigger.Label>Diary</NativeTabs.Trigger.Label>
 				<NativeTabs.Trigger.Icon md="book" />
+			</NativeTabs.Trigger>
+			<NativeTabs.Trigger name="settings">
+				<NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
+				<NativeTabs.Trigger.Icon md="settings" />
 			</NativeTabs.Trigger>
 		</NativeTabs>
 	);
