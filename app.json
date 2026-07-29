@@ -1,80 +1,87 @@
 {
-	"expo": {
-		"name": "DearAI",
-		"slug": "dearai",
-		"version": "1.0.0",
-		"orientation": "portrait",
-		"scheme": "dearai",
-		"userInterfaceStyle": "automatic",
-		"android": {
-			"predictiveBackGestureEnabled": false,
-			"permissions": [
-				"android.permission.RECORD_AUDIO",
-				"android.permission.MODIFY_AUDIO_SETTINGS",
-				"android.permission.FOREGROUND_SERVICE",
-				"android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
-				"android.permission.CAMERA"
-			],
-			"package": "com.oniondevs.dearai",
-			"googleServicesFile": "./google-services.json"
-		},
-		"icon": "./src/assets/icon.png",
-		"plugins": [
-			"expo-router",
-			"expo-secure-store",
-			[
-				"expo-font",
-				{
-					"fonts": [
-						"./src/assets/fonts/Rubik-Regular.ttf",
-						"./src/assets/fonts/Rubik-Bold.ttf",
-						"./src/assets/fonts/Rubik-SemiBold.ttf",
-						"./src/assets/fonts/Rubik-Medium.ttf",
-						"./src/assets/fonts/DMSerifDisplay.ttf"
-					]
-				}
-			],
-			"expo-web-browser",
-			[
-				"expo-audio",
-				{
-					"microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone for voice conversations."
-				}
-			],
-			"expo-image",
-			[
-				"expo-splash-screen",
-				{
-					"backgroundColor": "#f9f4ec",
-					"image": "./src/assets/splash-icon.png",
-					"imageWidth": 200
-				}
-			],
-			"expo-status-bar",
-			"expo-asset",
-			[
-				"react-native-nitro-google-signin",
-				{
-					"androidGoogleServicesFile": "./google-services.json"
-				}
-			],
-			"@react-native-firebase/app",
-			"@react-native-firebase/auth",
-			[
-				"expo-build-properties",
-				{
-					"android": {
-						"minSdkVersion": 26
-					}
-				}
-			]
-		],
-		"experiments": {
-			"typedRoutes": true,
-			"reactCompiler": true
-		},
-		"ios": {
-			"bundleIdentifier": "com.oniondevs.dearai"
-		}
-	}
+  "expo": {
+    "name": "DearAI",
+    "slug": "dearai",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "dearai",
+    "userInterfaceStyle": "automatic",
+    "android": {
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.CAMERA"
+      ],
+      "package": "com.oniondevs.dearai",
+      "googleServicesFile": "./google-services.json"
+    },
+    "icon": "./src/assets/icon.png",
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./src/assets/fonts/Rubik-Regular.ttf",
+            "./src/assets/fonts/Rubik-Bold.ttf",
+            "./src/assets/fonts/Rubik-SemiBold.ttf",
+            "./src/assets/fonts/Rubik-Medium.ttf",
+            "./src/assets/fonts/DMSerifDisplay.ttf"
+          ]
+        }
+      ],
+      "expo-web-browser",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone for voice conversations."
+        }
+      ],
+      "expo-image",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#f9f4ec",
+          "image": "./src/assets/splash-icon.png",
+          "imageWidth": 200
+        }
+      ],
+      "expo-status-bar",
+      "expo-asset",
+      [
+        "react-native-nitro-google-signin",
+        {
+          "androidGoogleServicesFile": "./google-services.json"
+        }
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "ios": {
+      "bundleIdentifier": "com.oniondevs.dearai"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "7632bbd0-0080-40a6-bbf3-9dd91550d76c"
+      }
+    },
+    "owner": "yagnik_p"
+  }
 }

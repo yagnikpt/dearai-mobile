@@ -1,3 +1,4 @@
+import { faceCropper } from "@dearai/vision-camera-face-cropper";
 import {
 	AudioModule,
 	RecordingPresets,
@@ -19,10 +20,25 @@ import {
 } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
+import {
+	ScalarType,
+	type TensorPtr,
+	useExecutorchModule,
+} from "react-native-executorch";
+import { useSharedValue } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import {
+	useCamera,
+	useCameraDevice,
+	useCameraPermission,
+	useFrameOutput,
+} from "react-native-vision-camera";
+import { useFaceDetector } from "react-native-vision-camera-face-detector";
+import { scheduleOnRN } from "react-native-worklets";
 import { withUniwind } from "uniwind";
-
+import { useAmbientMusic } from "@/context/AmbientMusicContext";
 import { useAuth } from "@/context/AuthContext";
+import { useSettings } from "@/context/SettingsContext";
 import { createChatWebSocketUrl } from "@/lib/api";
 
 const StyledSafeAreaView = withUniwind(SafeAreaView);
@@ -32,6 +48,51 @@ const StyledMicIcon = withUniwind(MicIcon);
 const StyledPauseIcon = withUniwind(PauseIcon);
 const StyledSendIcon = withUniwind(SendIcon);
 const StyledSquareIcon = withUniwind(SquareIcon);
+
+const MODEL_INPUT_SIZE = 224;
+const INFERENCE_SETTLE_MS = 500;
+const EMOTIONS = [
+	"Anger",
+	"Contempt",
+	"Disgust",
+	"Fear",
+	"Happiness",
+	"Neutral",
+	"Sadness",
+	"Surprise",
+] as const;
+
+type Emotion = (typeof EMOTIONS)[number];
+
+function getFloat32Values(tensor: TensorPtr): Float32Array {
+	if (tensor.scalarType !== ScalarType.FLOAT) {
+		throw new Error(
+			`Expected Float32 output, received scalar type ${tensor.scalarType}.`,
+		);
+	}
+
+	if (tensor.dataPtr instanceof Float32Array) return tensor.dataPtr;
+	if (tensor.dataPtr instanceof ArrayBuffer)
+		return new Float32Array(tensor.dataPtr);
+
+	if (ArrayBuffer.isView(tensor.dataPtr)) {
+		return new Float32Array(
+			tensor.dataPtr.buffer,
+			tensor.dataPtr.byteOffset,
+			tensor.dataPtr.byteLength / Float32Array.BYTES_PER_ELEMENT,
+		);
+	}
+
+	throw new Error("Model output does not expose an ArrayBuffer.");
+}
+
+function getPredictedEmotion(logits: Float32Array): Emotion {
+	let bestIndex = 0;
+	for (let index = 1; index < logits.length; index += 1) {
+		if (logits[index] > logits[bestIndex]) bestIndex = index;
+	}
+	return EMOTIONS[bestIndex];
+}
 
 type VoiceSocketEvent = {
 	layer:
@@ -65,6 +126,13 @@ export function VoiceChatScreen({
 }) {
 	const router = useRouter();
 	const { session } = useAuth();
+	const { setTemporarilyPaused } = useAmbientMusic();
+
+	useEffect(() => {
+		setTemporarilyPaused(true);
+		return () => setTemporarilyPaused(false);
+	}, [setTemporarilyPaused]);
+
 	const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 	const recorderState = useAudioRecorderState(recorder, 100);
 	const player = useAudioPlayer(null);
@@ -84,6 +152,115 @@ export function VoiceChatScreen({
 	const [statusText, setStatusText] = useState("Connecting to Dear AI...");
 	const [transcript, setTranscript] = useState<string | null>(null);
 	const [responseText, setResponseText] = useState<string | null>(null);
+
+	const { settings } = useSettings();
+	const { useCameraEmotionDetection } = settings;
+
+	const device = useCameraDevice("front");
+	const { hasPermission, requestPermission } = useCameraPermission();
+	const faceDetector = useFaceDetector();
+	const emotionHistoryRef = useRef<Emotion[]>([]);
+	const inferenceInFlight = useRef(false);
+
+	const {
+		error: modelError,
+		forward,
+		isGenerating,
+		isReady,
+	} = useExecutorchModule({
+		modelSource: require("@/assets/emotion_model.pte"),
+	});
+	const modelState = useRef({ forward, isGenerating, isReady });
+	modelState.current = { forward, isGenerating, isReady };
+
+	useEffect(() => {
+		if (useCameraEmotionDetection && !hasPermission) {
+			requestPermission();
+		}
+	}, [hasPermission, requestPermission, useCameraEmotionDetection]);
+
+	const runInference = useCallback(
+		async (data: ArrayBuffer, width: number, height: number) => {
+			const currentModel = modelState.current;
+			if (
+				!currentModel.isReady ||
+				currentModel.isGenerating ||
+				inferenceInFlight.current
+			) {
+				return;
+			}
+
+			inferenceInFlight.current = true;
+			try {
+				const output = await currentModel.forward([
+					{
+						dataPtr: data,
+						sizes: [1, 3, height, width],
+						scalarType: ScalarType.FLOAT,
+					},
+				]);
+				const logits = output[0] == null ? null : getFloat32Values(output[0]);
+				if (logits == null || logits.length !== 8) return;
+
+				const emotion = getPredictedEmotion(logits);
+				emotionHistoryRef.current.push(emotion);
+			} catch (error) {
+				console.error("Emotion model inference failed:", error);
+			} finally {
+				setTimeout(() => {
+					inferenceInFlight.current = false;
+				}, INFERENCE_SETTLE_MS);
+			}
+		},
+		[],
+	);
+
+	const isRecordingShared = useSharedValue(isRecording);
+	useEffect(() => {
+		isRecordingShared.value = isRecording;
+	}, [isRecording, isRecordingShared]);
+
+	const frameOutput = useFrameOutput({
+		pixelFormat: "yuv",
+		onFrame(frame) {
+			"worklet";
+			if (!isRecordingShared.value) {
+				frame.dispose();
+				return;
+			}
+			try {
+				const faces = faceDetector.detectFaces(frame);
+				const bounds = faces[0]?.bounds;
+				if (bounds == null) return;
+
+				const tensor = faceCropper.cropFace(
+					frame,
+					bounds.x,
+					bounds.y,
+					bounds.width,
+					bounds.height,
+					MODEL_INPUT_SIZE,
+					MODEL_INPUT_SIZE,
+				);
+				if (tensor == null) return;
+
+				try {
+					scheduleOnRN(runInference, tensor.data, tensor.width, tensor.height);
+				} catch (error) {
+					console.error("Failed to schedule inference on RN:", error);
+				}
+			} finally {
+				frame.dispose();
+			}
+		},
+	});
+
+	useCamera({
+		device: device ?? "front",
+		isActive: Boolean(useCameraEmotionDetection && hasPermission && isReady),
+		outputs: [frameOutput],
+		constraints: [{ fps: 2 }],
+	});
 
 	const appendResponseText = useCallback((content: string) => {
 		if (!content) return;
@@ -108,7 +285,7 @@ export function VoiceChatScreen({
 	}, [player]);
 
 	const enqueueAudio = useCallback(
-		(base64Audio: string) => {
+		async (base64Audio: string) => {
 			const audioFile = new File(Paths.cache, createAudioFileName());
 			audioFile.write(base64Audio, { encoding: EncodingType.Base64 });
 			audioQueueRef.current.push(audioFile.uri);
@@ -164,7 +341,9 @@ export function VoiceChatScreen({
 					}
 				} catch {
 					setIsSending(false);
-					setStatusText("We couldn't understand the response. Please try again.");
+					setStatusText(
+						"We couldn't understand the response. Please try again.",
+					);
 				}
 			};
 
@@ -223,6 +402,8 @@ export function VoiceChatScreen({
 			await setAudioModeAsync({
 				allowsRecording: true,
 				playsInSilentMode: true,
+				interruptionMode: "mixWithOthers",
+				shouldRouteThroughEarpiece: false,
 			});
 		}
 
@@ -232,10 +413,16 @@ export function VoiceChatScreen({
 	}, [router]);
 
 	useEffect(() => {
+		if (playerStatus.error) {
+			console.error("[VoiceChat] Audio player error:", playerStatus.error);
+			isAudioPlayingRef.current = false;
+			playNextAudio();
+			return;
+		}
 		if (!playerStatus.didJustFinish) return;
 		isAudioPlayingRef.current = false;
 		playNextAudio();
-	}, [playNextAudio, playerStatus.didJustFinish]);
+	}, [playNextAudio, playerStatus.didJustFinish, playerStatus.error]);
 
 	const startRecording = useCallback(async () => {
 		try {
@@ -243,6 +430,7 @@ export function VoiceChatScreen({
 			audioQueueRef.current = [];
 			isAudioPlayingRef.current = false;
 			setIsPlaying(false);
+			emotionHistoryRef.current = [];
 			await recorder.prepareToRecordAsync();
 			recorder.record();
 			setIsRecording(true);
@@ -274,14 +462,16 @@ export function VoiceChatScreen({
 			setTranscript(null);
 			setResponseText(null);
 			const audio = await new File(recordingUri).base64();
-			socket.send(
-				JSON.stringify({
-					audio,
-					voice_mode: true,
-					voice: "en-US-Studio-O",
-					session_id: activeSessionIdRef.current,
-				}),
-			);
+			const payload: Record<string, unknown> = {
+				audio,
+				voice_mode: true,
+				voice: "en-US-Studio-O",
+				session_id: activeSessionIdRef.current,
+			};
+			if (useCameraEmotionDetection && emotionHistoryRef.current.length > 0) {
+				payload.emotions = [...emotionHistoryRef.current];
+			}
+			socket.send(JSON.stringify(payload));
 			setStatusText("Thinking...");
 		} catch (error) {
 			setIsRecording(false);

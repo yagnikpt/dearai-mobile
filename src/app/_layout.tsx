@@ -10,7 +10,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { GoogleOneTapSignIn } from "react-native-nitro-google-signin";
 import { Uniwind } from "uniwind";
-import { AmbientMusicProvider } from "@/context/AmbientMusicContext";
+// import { AmbientMusicProvider } from "@/context/AmbientMusicContext";
 import { AuthProvider, useSession } from "@/context/AuthContext";
 import { SettingsProvider, useSettings } from "@/context/SettingsContext";
 

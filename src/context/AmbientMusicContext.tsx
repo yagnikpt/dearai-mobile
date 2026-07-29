@@ -1,4 +1,5 @@
 import {
+	setAudioModeAsync,
 	setIsAudioActiveAsync,
 	useAudioPlaylist,
 	useAudioPlaylistStatus,
@@ -17,12 +18,12 @@ import { useSettings } from "@/context/SettingsContext";
 // ─── Audio track registry ────────────────────────────────────────────────────
 // All ambient tracks are statically required so Metro bundles them correctly.
 const AMBIENT_TRACKS = [
-	require("../assets/audio/marconi-union-weightless.mp3"),
-	require("../assets/audio/weightless-part-2.mp3"),
-	require("../assets/audio/weightless-part-3-marconi-union.mp3"),
-	require("../assets/audio/weightless-part-4-marconi-union.mp3"),
-	require("../assets/audio/marconi-union-weightless-part-5.mp3"),
-	require("../assets/audio/weightless-part-6-marconi-union.mp3"),
+	require("@/assets/audio/marconi-union-weightless.mp3"),
+	require("@/assets/audio/weightless-part-2.mp3"),
+	require("@/assets/audio/weightless-part-3-marconi-union.mp3"),
+	require("@/assets/audio/weightless-part-4-marconi-union.mp3"),
+	require("@/assets/audio/marconi-union-weightless-part-5.mp3"),
+	require("@/assets/audio/weightless-part-6-marconi-union.mp3"),
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -40,20 +41,24 @@ type AmbientMusicContextType = {
 	isPlaying: boolean;
 	currentTrackIndex: number;
 	totalTracks: number;
+	setTemporarilyPaused: (paused: boolean) => void;
 };
 
 const AmbientMusicContext = createContext<AmbientMusicContextType>({
 	isPlaying: false,
 	currentTrackIndex: 0,
 	totalTracks: AMBIENT_TRACKS.length,
+	setTemporarilyPaused: () => {},
 });
 
 // ─── Inner player component ───────────────────────────────────────────────────
 // Separated so that hooks can be called unconditionally at the top level.
 function AmbientPlaylistPlayer({
 	onTrackChange,
+	isTemporarilyPaused,
 }: {
 	onTrackChange: (index: number) => void;
+	isTemporarilyPaused: boolean;
 }) {
 	const [shuffledSources] = useState(() => shuffleArray(AMBIENT_TRACKS));
 
@@ -70,9 +75,22 @@ function AmbientPlaylistPlayer({
 	useEffect(() => {
 		if (status.isLoaded && !startedRef.current) {
 			startedRef.current = true;
-			playlist.play();
+			if (!isTemporarilyPaused) {
+				playlist.play();
+			}
 		}
-	}, [status.isLoaded, playlist]);
+	}, [status.isLoaded, playlist, isTemporarilyPaused]);
+
+	// React to pause/play requests
+	useEffect(() => {
+		if (startedRef.current && status.isLoaded) {
+			if (isTemporarilyPaused) {
+				playlist.pause();
+			} else {
+				playlist.play();
+			}
+		}
+	}, [isTemporarilyPaused, playlist, status.isLoaded]);
 
 	// Notify parent about track changes
 	useEffect(() => {
@@ -93,6 +111,7 @@ export function AmbientMusicProvider({
 	const { settings } = useSettings();
 	const isEnabled = settings.playAmbientSounds;
 	const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+	const [isTemporarilyPaused, setTemporarilyPaused] = useState(false);
 
 	const handleTrackChange = useCallback((index: number) => {
 		setCurrentTrackIndex(index);
@@ -102,6 +121,12 @@ export function AmbientMusicProvider({
 	// and mixes with other audio (e.g. voice calls, system sounds).
 	useEffect(() => {
 		if (isEnabled) {
+			setAudioModeAsync({
+				playsInSilentMode: true,
+				interruptionMode: "mixWithOthers",
+				shouldPlayInBackground: true,
+			}).catch(console.warn);
+			
 			setIsAudioActiveAsync(true).catch((err) => {
 				console.warn("[AmbientMusic] Failed to activate audio session:", err);
 			});
@@ -115,12 +140,18 @@ export function AmbientMusicProvider({
 	return (
 		<AmbientMusicContext.Provider
 			value={{
-				isPlaying: isEnabled,
+				isPlaying: isEnabled && !isTemporarilyPaused,
 				currentTrackIndex,
 				totalTracks: AMBIENT_TRACKS.length,
+				setTemporarilyPaused,
 			}}
 		>
-			{isEnabled && <AmbientPlaylistPlayer onTrackChange={handleTrackChange} />}
+			{isEnabled && (
+				<AmbientPlaylistPlayer
+					onTrackChange={handleTrackChange}
+					isTemporarilyPaused={isTemporarilyPaused}
+				/>
+			)}
 			{children}
 		</AmbientMusicContext.Provider>
 	);
