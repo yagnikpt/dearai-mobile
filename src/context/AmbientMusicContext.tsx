@@ -19,11 +19,11 @@ import { useSettings } from "@/context/SettingsContext";
 // All ambient tracks are statically required so Metro bundles them correctly.
 const AMBIENT_TRACKS = [
 	require("@/assets/audio/marconi-union-weightless.mp3"),
-	require("@/assets/audio/weightless-part-2.mp3"),
-	require("@/assets/audio/weightless-part-3-marconi-union.mp3"),
-	require("@/assets/audio/weightless-part-4-marconi-union.mp3"),
-	require("@/assets/audio/marconi-union-weightless-part-5.mp3"),
-	require("@/assets/audio/weightless-part-6-marconi-union.mp3"),
+	// require("@/assets/audio/weightless-part-2.mp3"),
+	// require("@/assets/audio/weightless-part-3-marconi-union.mp3"),
+	// require("@/assets/audio/weightless-part-4-marconi-union.mp3"),
+	// require("@/assets/audio/marconi-union-weightless-part-5.mp3"),
+	// require("@/assets/audio/weightless-part-6-marconi-union.mp3"),
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -126,7 +126,7 @@ export function AmbientMusicProvider({
 				interruptionMode: "mixWithOthers",
 				shouldPlayInBackground: true,
 			}).catch(console.warn);
-			
+
 			setIsAudioActiveAsync(true).catch((err) => {
 				console.warn("[AmbientMusic] Failed to activate audio session:", err);
 			});
