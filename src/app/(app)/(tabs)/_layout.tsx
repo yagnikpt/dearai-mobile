@@ -3,9 +3,14 @@ import { useCSSVariable } from "uniwind";
 
 export default function TabLayout() {
 	const accentColor = useCSSVariable("--color-accent");
+	const bgColor = useCSSVariable("--color-background");
 
 	return (
-		<NativeTabs tintColor={accentColor?.toString()} rippleColor={"none"}>
+		<NativeTabs
+			backgroundColor={bgColor?.toString()}
+			tintColor={accentColor?.toString()}
+			rippleColor={"none"}
+		>
 			<NativeTabs.Trigger name="index">
 				<NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
 				<NativeTabs.Trigger.Icon

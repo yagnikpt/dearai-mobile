@@ -255,8 +255,10 @@ export function VoiceChatScreen({
 		},
 	});
 
+	if (!device) return null;
+
 	useCamera({
-		device: device ?? "front",
+		device: device,
 		isActive: Boolean(useCameraEmotionDetection && hasPermission && isReady),
 		outputs: [frameOutput],
 		constraints: [{ fps: 2 }],
