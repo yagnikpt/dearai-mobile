@@ -1,9 +1,4 @@
-import {
-	setAudioModeAsync,
-	setIsAudioActiveAsync,
-	useAudioPlaylist,
-	useAudioPlaylistStatus,
-} from "expo-audio";
+import { useAudioPlaylist, useAudioPlaylistStatus } from "expo-audio";
 import type React from "react";
 import {
 	createContext,
@@ -116,26 +111,6 @@ export function AmbientMusicProvider({
 	const handleTrackChange = useCallback((index: number) => {
 		setCurrentTrackIndex(index);
 	}, []);
-
-	// Configure the audio session so ambient music plays even in silent mode
-	// and mixes with other audio (e.g. voice calls, system sounds).
-	useEffect(() => {
-		if (isEnabled) {
-			setAudioModeAsync({
-				playsInSilentMode: true,
-				interruptionMode: "mixWithOthers",
-				shouldPlayInBackground: true,
-			}).catch(console.warn);
-
-			setIsAudioActiveAsync(true).catch((err) => {
-				console.warn("[AmbientMusic] Failed to activate audio session:", err);
-			});
-		} else {
-			setIsAudioActiveAsync(false).catch((err) => {
-				console.warn("[AmbientMusic] Failed to deactivate audio session:", err);
-			});
-		}
-	}, [isEnabled]);
 
 	return (
 		<AmbientMusicContext.Provider

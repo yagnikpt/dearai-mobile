@@ -10,7 +10,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { GoogleOneTapSignIn } from "react-native-nitro-google-signin";
 import { Uniwind } from "uniwind";
-// import { AmbientMusicProvider } from "@/context/AmbientMusicContext";
+import { AmbientMusicProvider } from "@/context/AmbientMusicContext";
+import { AudioSessionProvider } from "@/context/AudioSessionContext";
 import { AuthProvider, useSession } from "@/context/AuthContext";
 import { SettingsProvider, useSettings } from "@/context/SettingsContext";
 
@@ -74,12 +75,14 @@ export default function RootLayout() {
 				<HeroUINativeProvider
 					config={{ devInfo: { stylingPrinciples: false } }}
 				>
-					<AuthProvider>
-						<SettingsProvider>
-							{/*<AmbientMusicProvider>*/}
-							<RootLayoutNav />
-							{/*</AmbientMusicProvider>*/}
-						</SettingsProvider>
+						<AuthProvider>
+							<SettingsProvider>
+								<AudioSessionProvider>
+									<AmbientMusicProvider>
+										<RootLayoutNav />
+									</AmbientMusicProvider>
+								</AudioSessionProvider>
+							</SettingsProvider>
 					</AuthProvider>
 				</HeroUINativeProvider>
 			</KeyboardProvider>

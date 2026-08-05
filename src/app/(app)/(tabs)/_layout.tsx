@@ -3,7 +3,7 @@ import { useCSSVariable } from "uniwind";
 
 export default function TabLayout() {
 	const accentColor = useCSSVariable("--color-accent");
-	const bgColor = useCSSVariable("--color-background");
+	const bgColor = useCSSVariable("--color-surface");
 
 	return (
 		<NativeTabs

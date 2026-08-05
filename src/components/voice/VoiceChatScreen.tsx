@@ -2,7 +2,6 @@ import { faceCropper } from "@dearai/vision-camera-face-cropper";
 import {
 	AudioModule,
 	RecordingPresets,
-	setAudioModeAsync,
 	useAudioPlayer,
 	useAudioPlayerStatus,
 	useAudioRecorder,
@@ -39,6 +38,7 @@ import { useFaceDetector } from "react-native-vision-camera-face-detector";
 import { scheduleOnRN } from "react-native-worklets";
 import { withUniwind } from "uniwind";
 import { useAmbientMusic } from "@/context/AmbientMusicContext";
+import { useAudioSession } from "@/context/AudioSessionContext";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { createChatWebSocketUrl } from "@/lib/api";
@@ -148,11 +148,17 @@ export function VoiceChatScreen({
 	const router = useRouter();
 	const { session } = useAuth();
 	const { setTemporarilyPaused } = useAmbientMusic();
+	const { setVoiceSessionActive } = useAudioSession();
 
 	useEffect(() => {
 		setTemporarilyPaused(true);
 		return () => setTemporarilyPaused(false);
 	}, [setTemporarilyPaused]);
+
+	useEffect(() => {
+		setVoiceSessionActive(true);
+		return () => setVoiceSessionActive(false);
+	}, [setVoiceSessionActive]);
 
 	const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 	const recorderState = useAudioRecorderState(recorder, 100);
@@ -413,12 +419,6 @@ export function VoiceChatScreen({
 				);
 				return;
 			}
-			await setAudioModeAsync({
-				allowsRecording: true,
-				playsInSilentMode: true,
-				interruptionMode: "mixWithOthers",
-				shouldRouteThroughEarpiece: false,
-			});
 		}
 
 		configureAudio().catch(() => {

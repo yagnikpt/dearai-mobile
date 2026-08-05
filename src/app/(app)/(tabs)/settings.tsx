@@ -55,7 +55,7 @@ export default function SettingsPage() {
 						/>
 					</Card.Body>
 				</Card>
-				{/*<Card>
+				<Card>
 					<Card.Body className="flex-row justify-between items-center gap-4">
 						<View className="shrink">
 							<Text className="font-sans text-base">Play ambient sounds</Text>
@@ -70,7 +70,7 @@ export default function SettingsPage() {
 							}
 						/>
 					</Card.Body>
-				</Card>*/}
+				</Card>
 			</View>
 			<Button className="mt-auto" onPress={signOut} variant="ghost">
 				<StyledLogOutIcon size={20} className="text-danger" />
