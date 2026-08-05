@@ -28,6 +28,8 @@ import {
 import { useSharedValue } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
+	type CameraDevice,
+	type CameraFrameOutput,
 	useCamera,
 	useCameraDevice,
 	useCameraPermission,
@@ -115,6 +117,25 @@ function formatDuration(durationMillis: number) {
 
 function createAudioFileName() {
 	return `dearai-voice-${Date.now()}-${Math.random().toString(36).slice(2)}.mp3`;
+}
+
+function EmotionCameraSession({
+	device,
+	isActive,
+	frameOutput,
+}: {
+	device: CameraDevice;
+	isActive: boolean;
+	frameOutput: CameraFrameOutput;
+}) {
+	useCamera({
+		device,
+		isActive,
+		outputs: [frameOutput],
+		constraints: [{ fps: 2 }],
+	});
+
+	return null;
 }
 
 export function VoiceChatScreen({
@@ -253,15 +274,6 @@ export function VoiceChatScreen({
 				frame.dispose();
 			}
 		},
-	});
-
-	if (!device) return null;
-
-	useCamera({
-		device: device,
-		isActive: Boolean(useCameraEmotionDetection && hasPermission && isReady),
-		outputs: [frameOutput],
-		constraints: [{ fps: 2 }],
 	});
 
 	const appendResponseText = useCallback((content: string) => {
@@ -506,6 +518,13 @@ export function VoiceChatScreen({
 
 	return (
 		<StyledSafeAreaView className="flex-1 bg-background">
+			{device && useCameraEmotionDetection && (
+				<EmotionCameraSession
+					device={device}
+					isActive={Boolean(hasPermission && isReady)}
+					frameOutput={frameOutput}
+				/>
+			)}
 			<View className="flex-row items-center border-b border-border px-5 py-3">
 				<Pressable
 					onPress={() => router.back()}
